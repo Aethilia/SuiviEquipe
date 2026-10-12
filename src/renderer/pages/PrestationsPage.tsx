@@ -8,7 +8,7 @@ import { usePrestations } from '../prestations';
 type Row = Omit<Prestation, 't'>;
 const sorted = (a: Row[]) => [...a].sort((x, y) => x.ordre - y.ordre || x.code.localeCompare(y.code, 'fr'));
 
-export function PrestationsPage({ notify }: { notify: Notify }) {
+export function PrestationsPage({ notify, onBack }: { notify: Notify; onBack: () => void }) {
   const { all, reload } = usePrestations();
   const [rows, setRows] = useState<Row[]>([]);
   const [code, setCode] = useState('');
@@ -59,7 +59,7 @@ export function PrestationsPage({ notify }: { notify: Notify }) {
 
   return (
     <div className="page">
-      <div className="toolbar"><h1>Prestations</h1><span className="muted">Les types d'heures sup proposés dans la grille</span></div>
+      <div className="toolbar"><button className="quiet" onClick={onBack}>‹ Heures sup</button><h1>Prestations</h1><span className="muted">Les types d'heures sup proposés dans la grille</span></div>
 
       <div className="card form" style={{ maxWidth: 'none', flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', padding: 14 }}>
         <input type="text" placeholder="Code (ex. NU)" value={code} maxLength={6} onChange={(e) => setCode(e.target.value)} style={{ width: 110, padding: '9px 12px', border: '1px solid var(--line)', borderRadius: 12 }} />

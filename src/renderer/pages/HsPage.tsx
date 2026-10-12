@@ -16,13 +16,15 @@ interface Props {
   notify: Notify;
   refreshKey: number;
   onGoSettings: () => void;
+  onGoPrestations: () => void;
   onAddAgent: (nom: string) => Promise<void>;
   onRemoveAgent: (a: Agent) => Promise<void>;
 }
 
-export function HsPage({ year, setYear, agents, notify, refreshKey, onGoSettings, onAddAgent, onRemoveAgent }: Props) {
+export function HsPage({ year, setYear, agents, notify, refreshKey, onGoSettings, onGoPrestations, onAddAgent, onRemoveAgent }: Props) {
   const { all: prestations } = usePrestations();
   const [newAgent, setNewAgent] = useState('');
+  const [adding, setAdding] = useState(false);
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const { doc, loading, setCell } = useHsMonth(year, month, notify, refreshKey);
   const [sel, setSel] = useState<{ agent: Agent; day: number; rect: DOMRect } | null>(null);
@@ -100,6 +102,7 @@ export function HsPage({ year, setYear, agents, notify, refreshKey, onGoSettings
         {prestations.filter((p) => p.actif).map((p) => <span key={p.code}><CodeBadge code={p.code} /> {p.label}</span>)}
         <span><i className="sw" style={{ background: 'var(--sun-bg)', border: '1px solid var(--sun-head)' }} /> Dimanche</span>
         <span><i className="sw" style={{ background: 'var(--hol-bg)', border: '1px solid var(--hol-head)' }} /> Jour férié</span>
+        <button className="quiet" onClick={onGoPrestations} title="Modifier les prestations" aria-label="Modifier les prestations">✎</button>
       </div>
 
       <div className="card gridwrap">
@@ -155,10 +158,19 @@ export function HsPage({ year, setYear, agents, notify, refreshKey, onGoSettings
             <tbody>
               <tr>
                 <td className="name">
-                  <input className="addagent" type="text" placeholder="+ Ajouter un agent (Entrée)" value={newAgent} onChange={(e) => setNewAgent(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter' && newAgent.trim()) { void onAddAgent(newAgent.trim()); setNewAgent(''); } }} />
+                  {adding ? (
+                    <input className="addagent" type="text" autoFocus placeholder="Nom Prénom, puis Entrée" value={newAgent} onChange={(e) => setNewAgent(e.target.value)}
+                      onBlur={() => { if (!newAgent.trim()) setAdding(false); }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Escape') { setNewAgent(''); setAdding(false); }
+                        if (e.key === 'Enter' && newAgent.trim()) { void onAddAgent(newAgent.trim()); setNewAgent(''); }
+                      }} />
+                  ) : (
+                    <button className="quiet" onClick={() => setAdding(true)}>+ Agent</button>
+                  )}
                 </td>
-                <td colSpan={n + 1} />
+                {days.map((d) => <td key={d} className={kind(d)} />)}
+                <td />
               </tr>
             </tbody>
             <tfoot>

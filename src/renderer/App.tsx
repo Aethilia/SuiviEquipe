@@ -16,7 +16,6 @@ const NAV: { id: PageId; label: string; soon?: boolean }[] = [
   { id: 'poids', label: 'Poids fourgons', soon: true },
   { id: 'synthese', label: 'Synthèse annuelle' },
   { id: 'agents', label: 'Agents' },
-  { id: 'prestations', label: 'Prestations' },
   { id: 'vehicules', label: 'Véhicules', soon: true },
   { id: 'feries', label: 'Jours fériés' },
   { id: 'params', label: 'Paramètres' },
@@ -91,7 +90,7 @@ export function App() {
       <nav className="nav">
         <div className="brand"><i /> Suivi Équipe</div>
         {NAV.map((n) => (
-          <button key={n.id} className={`pill ${page === n.id ? 'active' : ''}`} disabled={n.soon} title={n.soon ? 'Prochaine étape' : undefined} onClick={() => setPage(n.id)}>
+          <button key={n.id} className={`pill ${page === n.id || (n.id === 'hs' && page === 'prestations') ? 'active' : ''}`} disabled={n.soon} title={n.soon ? 'Prochaine étape' : undefined} onClick={() => setPage(n.id)}>
             {n.label}
           </button>
         ))}
@@ -101,10 +100,10 @@ export function App() {
         </div>
       </nav>
 
-      {page === 'hs' && <HsPage year={year} setYear={setYear} agents={agents} notify={notify} refreshKey={refreshKey} onGoSettings={() => setPage('params')} onAddAgent={addAgent} onRemoveAgent={removeAgent} />}
+      {page === 'hs' && <HsPage year={year} setYear={setYear} agents={agents} notify={notify} refreshKey={refreshKey} onGoSettings={() => setPage('params')} onGoPrestations={() => setPage('prestations')} onAddAgent={addAgent} onRemoveAgent={removeAgent} />}
       {page === 'synthese' && <SynthesePage year={year} setYear={setYear} agents={agents} notify={notify} refreshKey={refreshKey} />}
       {page === 'agents' && <AgentsPage agents={agents} notify={notify} reload={reloadAgents} />}
-      {page === 'prestations' && <PrestationsPage notify={notify} />}
+      {page === 'prestations' && <PrestationsPage notify={notify} onBack={() => setPage('hs')} />}
       {page === 'feries' && <FeriesPage year={year} setYear={setYear} />}
       {page === 'params' && config && <SettingsPage config={config} year={year} notify={notify} onConfig={afterConfigChange} onImported={afterImport} />}
 
