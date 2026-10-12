@@ -1,6 +1,6 @@
 {
   "name": "suivi-equipe",
-  "productName": "Suivi Équipe",
+  "productName": "SuiviEquipe",
   "version": "0.1.0",
   "description": "Suivi des heures sup (dimanches et fériés) et des pesées de fourgons – secteur Nice",
   "private": true,
@@ -35,7 +35,7 @@
   },
   "build": {
     "appId": "fr.aethilia.suiviequipe",
-    "productName": "Suivi Équipe",
+    "productName": "SuiviEquipe",
     "directories": {
       "output": "release"
     },
@@ -60,7 +60,8 @@
       "allowToChangeInstallationDirectory": true,
       "language": "1036",
       "createDesktopShortcut": true,
-      "artifactName": "SuiviEquipe-Setup-${version}.${ext}"
+      "artifactName": "SuiviEquipe-Setup-${version}.${ext}",
+      "shortcutName": "Suivi Équipe"
     }
   },
   "author": "Aethilia"

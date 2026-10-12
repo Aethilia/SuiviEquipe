@@ -7,6 +7,12 @@ import { exportHs } from './excel/exportHs';
 import { importHs } from './excel/importHs';
 import { exportPoids } from './excel/exportPoids';
 import { importPoids } from './excel/importPoids';
+import { fatal, installCrashHandlers, log } from './diagnostics';
+
+// Pilote graphique : sur certains postes (bureau à distance, vieux pilotes) Electron n'ouvre aucune fenêtre avec l'accélération matérielle.
+app.disableHardwareAcceleration();
+app.setAppUserModelId('fr.aethilia.suiviequipe');
+installCrashHandlers();
 
 let win: BrowserWindow | null = null;
 
@@ -26,6 +32,9 @@ function createWindow() {
       sandbox: true,
     },
   });
+  win.webContents.on('did-fail-load', (_e, code, desc, url) => fatal("Impossible d'afficher l'application", `${desc} (${code}) : ${url}`));
+  win.webContents.on('preload-error', (_e, file, err) => fatal('Erreur de chargement', `${file}: ${err.message}`));
+  win.once('ready-to-show', () => log('fenêtre prête'));
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('https://')) void shell.openExternal(url);
     return { action: 'deny' };
@@ -119,17 +128,20 @@ if (!gotLock) {
   app.quit();
 } else {
   app.on('second-instance', () => {
-    if (win) {
-      if (win.isMinimized()) win.restore();
-      win.focus();
-    }
+    // Une copie déjà lancée mais sans fenêtre (plantée en arrière-plan) ne doit pas empêcher d'ouvrir l'application.
+    if (!win) return createWindow();
+    if (win.isMinimized()) win.restore();
+    win.focus();
   });
-  void app.whenReady().then(() => {
-    registerIpc();
-    createWindow();
-    void startWatcher((ev) => emit('data:changed', ev));
-    void storage.pruneBackups();
-  });
+  void app
+    .whenReady()
+    .then(() => {
+      registerIpc();
+      createWindow();
+      void startWatcher((ev) => emit('data:changed', ev));
+      void storage.pruneBackups();
+    })
+    .catch((e) => fatal('Démarrage impossible', e instanceof Error ? (e.stack ?? e.message) : String(e)));
   app.on('window-all-closed', () => {
     stopWatcher();
     app.quit();

@@ -40,3 +40,14 @@ Ces copies ne remplacent pas la sauvegarde habituelle du serveur de fichiers.
 * Les **horloges** des postes doivent être à peu près à l'heure (c'est le cas dans un domaine Windows).
 * Un **antivirus** qui analyse le dossier partagé peut ralentir les écritures de quelques centaines de millisecondes : sans conséquence, mais à exclure du scan si possible.
 * Pour **changer de dossier** ou de nom de poste : Paramètres.
+
+## Si l'application ne s'ouvre pas
+
+Depuis cette version, un plantage au démarrage affiche un message d'erreur et est consigné dans un **journal local** :
+`%APPDATA%\SuiviEquipe\suivi-equipe.log` (coller `%APPDATA%\SuiviEquipe` dans la barre d'adresse de l'Explorateur).
+
+À vérifier, dans l'ordre :
+1. **Gestionnaire des tâches** (Ctrl+Maj+Échap) : y a-t-il un processus « SuiviEquipe » déjà en cours ? Si oui, le terminer puis relancer.
+2. **Windows 11 « Contrôle intelligent des applications » / SmartScreen / antivirus** : l'installeur n'est pas signé et peut être bloqué ou mis en quarantaine sans message évident. Regarder *Sécurité Windows → Protection contre les virus → Historique de protection*.
+3. **Bureau à distance / Citrix / machine virtuelle** : l'accélération graphique est désactivée par l'application, mais un pilote défaillant peut encore poser problème.
+4. Lancer depuis PowerShell pour voir les erreurs : `& "$env:LOCALAPPDATA\Programs\SuiviEquipe\SuiviEquipe.exe"`.
