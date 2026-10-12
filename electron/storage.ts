@@ -48,7 +48,7 @@ export async function updateMonth(month: string, fn: (disk: HsMonthDoc) => HsMon
   });
 }
 
-export function setCell(month: string, agentId: string, day: number, v: Code | null): Promise<HsMonthDoc> {
+export async function setCell(month: string, agentId: string, day: number, v: Code | null): Promise<HsMonthDoc> {
   if (!Number.isInteger(day) || day < 1 || day > 31) throw new Error('Jour invalide');
   return updateMonth(month, (disk) => applyCell(disk, agentId, day, v, Date.now(), getConfig().userName));
 }
@@ -144,7 +144,7 @@ function checkPoidsValue(v: PoidsValue | null): PoidsValue | null {
   return { p: v.p };
 }
 
-export function setPoidsCell(month: string, vehId: string, day: number, v: PoidsValue | null): Promise<PoidsMonthDoc> {
+export async function setPoidsCell(month: string, vehId: string, day: number, v: PoidsValue | null): Promise<PoidsMonthDoc> {
   if (!Number.isInteger(day) || day < 1 || day > 31) throw new Error('Jour invalide');
   const value = checkPoidsValue(v);
   return updatePoidsMonth(month, (disk) => applyPoidsCell(disk, vehId, day, value, Date.now(), getConfig().userName));
