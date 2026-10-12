@@ -3,6 +3,13 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      publier:
+        description: "Publier l'installeur sur la page Releases du dépôt"
+        type: boolean
+        default: true
+permissions:
+  contents: write
 jobs:
   build:
     runs-on: windows-latest
@@ -15,3 +22,14 @@ jobs:
       - run: npm run dist
       - uses: actions/upload-artifact@v4
         with: { name: installeur-windows, path: release/*.exe }
+      - name: Publier une release
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.publier }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          gh release create "v${VERSION}-build${{ github.run_number }}" release/*.exe \
+            --target "${{ github.sha }}" \
+            --title "Suivi Équipe ${VERSION} (build ${{ github.run_number }})" \
+            --notes "Installeur Windows. Télécharger le fichier .exe ci-dessous, puis le lancer (installation par utilisateur, sans droits administrateur). Voir docs/DEPLOIEMENT.md pour la mise en place multi-postes."

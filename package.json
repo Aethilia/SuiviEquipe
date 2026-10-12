@@ -59,7 +59,8 @@
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
       "language": "1036",
-      "createDesktopShortcut": true
+      "createDesktopShortcut": true,
+      "artifactName": "SuiviEquipe-Setup-${version}.${ext}"
     }
   },
   "author": "Aethilia"
