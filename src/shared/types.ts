@@ -65,6 +65,8 @@ export interface AgentsDoc {
 
 export interface AppConfig {
   dataDir: string;
+  /** Faux tant que l'utilisateur n'a pas choisi son dossier de données (premier lancement du poste). */
+  configured: boolean;
   /** Nom du poste, enregistré dans chaque modification. */
   userName: string;
 }

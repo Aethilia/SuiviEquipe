@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Agent, AppConfig, Section, Vehicule } from '../shared/types';
 import { errMsg, useAgents, useVehicules } from './hooks';
+import { WelcomePage } from './pages/WelcomePage';
 import { PoidsPage } from './pages/PoidsPage';
 import { VehiculesPage } from './pages/VehiculesPage';
 import { AgentsPage } from './pages/AgentsPage';
@@ -27,6 +28,8 @@ export function App() {
   const [page, setPage] = useState<PageId>('hs');
   const [year, setYear] = useState(new Date().getFullYear());
   const [config, setConfig] = useState<AppConfig | null>(null);
+  const [welcome, setWelcome] = useState(false);
+  const [checkedAt, setCheckedAt] = useState<Date | null>(null);
   const [dirOk, setDirOk] = useState<{ ok: boolean; error?: string }>({ ok: true });
   const [toast, setToast] = useState<{ text: string; kind: 'error' | 'info' } | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -44,13 +47,14 @@ export function App() {
   const checkDir = useCallback(async () => {
     try {
       setDirOk(await window.api.config.check());
+      setCheckedAt(new Date());
     } catch (e) {
       setDirOk({ ok: false, error: errMsg(e) });
     }
   }, []);
 
   useEffect(() => {
-    window.api.config.get().then(setConfig, (e) => notify(errMsg(e)));
+    window.api.config.get().then((c) => { setConfig(c); setWelcome(!c.configured); }, (e) => notify(errMsg(e)));
     void checkDir();
     const id = window.setInterval(checkDir, 20_000);
     return () => window.clearInterval(id);
@@ -96,6 +100,14 @@ export function App() {
     }
   }, [notify, reloadVehicules]);
 
+  /** Relit tout depuis le dossier partagé (bouton ↻). */
+  const refreshAll = () => {
+    setRefreshKey((k) => k + 1);
+    void reloadAgents();
+    void reloadVehicules();
+    void checkDir();
+  };
+
   const afterConfigChange = (c: AppConfig) => {
     setConfig(c);
     setRefreshKey((k) => k + 1);
@@ -109,6 +121,10 @@ export function App() {
     void reloadVehicules();
   };
 
+  if (welcome && config) {
+    return <WelcomePage config={config} onDone={(c) => { afterConfigChange(c); setWelcome(false); }} />;
+  }
+
   return (
     <PrestationsProvider notify={notify} refreshKey={refreshKey}>
     <div className="app">
@@ -120,13 +136,16 @@ export function App() {
           </button>
         ))}
         <div className="spacer" />
-        <div className={`sync ${dirOk.ok ? '' : 'bad'}`} title={dirOk.ok ? config?.dataDir : dirOk.error} onClick={() => !dirOk.ok && setPage('params')}>
+        <div className={`sync ${dirOk.ok ? '' : 'bad'}`}
+          title={dirOk.ok ? `${config?.dataDir}\nPoste : ${config?.userName}\nVérifié à ${checkedAt?.toLocaleTimeString('fr-FR') ?? '…'}` : `${dirOk.error}\nLes modifications ne peuvent pas être enregistrées.`}
+          onClick={() => !dirOk.ok && setPage('params')}>
           <b /> {dirOk.ok ? 'Dossier partagé connecté' : 'Dossier inaccessible'}
         </div>
+        <button className="quiet" onClick={refreshAll} title="Actualiser depuis le dossier partagé" aria-label="Actualiser">↻</button>
       </nav>
 
-      {page === 'hs' && <HsPage year={year} setYear={setYear} agents={agents} notify={notify} refreshKey={refreshKey} onGoSettings={() => setPage('params')} onGoPrestations={() => setPage('prestations')} onAddAgent={addAgent} onRemoveAgent={removeAgent} />}
-      {page === 'poids' && <PoidsPage year={year} setYear={setYear} vehicules={vehicules} notify={notify} refreshKey={refreshKey} onGoVehicules={() => setPage('vehicules')} onAddVehicule={addVehicule} onRemoveVehicule={removeVehicule} />}
+      {page === 'hs' && <HsPage year={year} setYear={setYear} agents={agents} notify={notify} me={config?.userName ?? ''} refreshKey={refreshKey} onGoSettings={() => setPage('params')} onGoPrestations={() => setPage('prestations')} onAddAgent={addAgent} onRemoveAgent={removeAgent} />}
+      {page === 'poids' && <PoidsPage year={year} setYear={setYear} vehicules={vehicules} notify={notify} me={config?.userName ?? ''} refreshKey={refreshKey} onGoVehicules={() => setPage('vehicules')} onAddVehicule={addVehicule} onRemoveVehicule={removeVehicule} />}
       {page === 'vehicules' && <VehiculesPage vehicules={vehicules} notify={notify} reload={reloadVehicules} onBack={() => setPage('poids')} />}
       {page === 'synthese' && <SynthesePage year={year} setYear={setYear} agents={agents} vehicules={vehicules} notify={notify} refreshKey={refreshKey} />}
       {page === 'agents' && <AgentsPage agents={agents} notify={notify} reload={reloadAgents} />}

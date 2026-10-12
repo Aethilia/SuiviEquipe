@@ -1,6 +1,8 @@
 import { useCallback, useMemo, useState } from 'react';
 import { dateStr, daysInMonth, MONTHS_FR, MONTHS_SHORT, WEEKDAY_FR, WEEKDAY_LETTER, weekday } from '../../shared/calendar';
 import { holidayMap } from '../../shared/holidays';
+import { cellKey } from '../../shared/merge';
+import { describeEdit } from '../../shared/sync';
 import { cellValue, monthStats, visibleAgents } from '../../shared/stats';
 import type { Agent, Code } from '../../shared/types';
 import { CodeBadge } from '../components/CodeBadge';
@@ -14,6 +16,7 @@ interface Props {
   setYear: (y: number) => void;
   agents: Agent[];
   notify: Notify;
+  me: string;
   refreshKey: number;
   onGoSettings: () => void;
   onGoPrestations: () => void;
@@ -21,12 +24,12 @@ interface Props {
   onRemoveAgent: (a: Agent) => Promise<void>;
 }
 
-export function HsPage({ year, setYear, agents, notify, refreshKey, onGoSettings, onGoPrestations, onAddAgent, onRemoveAgent }: Props) {
+export function HsPage({ year, setYear, agents, notify, me, refreshKey, onGoSettings, onGoPrestations, onAddAgent, onRemoveAgent }: Props) {
   const { all: prestations } = usePrestations();
   const [newAgent, setNewAgent] = useState('');
   const [adding, setAdding] = useState(false);
   const [month, setMonth] = useState(new Date().getMonth() + 1);
-  const { doc, loading, setCell } = useHsMonth(year, month, notify, refreshKey);
+  const { doc, loading, setCell, flash } = useHsMonth(year, month, notify, refreshKey, me);
   const [sel, setSel] = useState<{ agent: Agent; day: number; rect: DOMRect } | null>(null);
   const [exporting, setExporting] = useState(false);
 
@@ -144,7 +147,8 @@ export function HsPage({ year, setYear, agents, notify, refreshKey, onGoSettings
                     return (
                       <td
                         key={d}
-                        className={`cell ${v ? 'has' : kind(d)} ${isSel ? 'sel' : ''}`}
+                        className={`cell ${v ? 'has' : kind(d)} ${isSel ? 'sel' : ''} ${flash.has(cellKey(a.id, d)) ? 'flash' : ''}`}
+                        title={describeEdit(doc.cells[cellKey(a.id, d)])}
                         onClick={(e) => setSel({ agent: a, day: d, rect: e.currentTarget.getBoundingClientRect() })}
                       >
                         {v && <CodeBadge code={v} />}

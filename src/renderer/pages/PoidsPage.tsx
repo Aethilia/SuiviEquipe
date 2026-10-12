@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { dateStr, daysInMonth, MONTHS_FR, MONTHS_SHORT, WEEKDAY_FR, WEEKDAY_LETTER, weekday } from '../../shared/calendar';
 import { holidayMap } from '../../shared/holidays';
+import { cellKey } from '../../shared/merge';
+import { describeEdit } from '../../shared/sync';
 import { fmtKg, formatPoidsInput, parsePoidsInput, poidsCell, poidsStats, sumKg, visibleVehicules, weeksOfMonth } from '../../shared/poids';
 import type { Section, Vehicule } from '../../shared/types';
 import { YearPicker } from '../components/YearPicker';
@@ -11,6 +13,7 @@ interface Props {
   setYear: (y: number) => void;
   vehicules: Vehicule[];
   notify: Notify;
+  me: string;
   refreshKey: number;
   onGoVehicules: () => void;
   onAddVehicule: (nom: string, section: Section) => Promise<void>;
@@ -19,12 +22,12 @@ interface Props {
 
 const tonnes = (kg: number) => (kg / 1000).toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
-export function PoidsPage({ year, setYear, vehicules, notify, refreshKey, onGoVehicules, onAddVehicule, onRemoveVehicule }: Props) {
+export function PoidsPage({ year, setYear, vehicules, notify, me, refreshKey, onGoVehicules, onAddVehicule, onRemoveVehicule }: Props) {
   const today = new Date();
   const [month, setMonth] = useState(today.getMonth() + 1);
   const [view, setView] = useState<'mois' | 'semaine'>('semaine');
   const [weekIdx, setWeekIdx] = useState(0);
-  const { doc, setCell } = usePoidsMonth(year, month, notify, refreshKey);
+  const { doc, setCell, flash } = usePoidsMonth(year, month, notify, refreshKey, me);
   const [editing, setEditing] = useState<{ id: string; day: number } | null>(null);
   const skipBlur = useRef(false);
   const [adding, setAdding] = useState<Section | null>(null);
@@ -143,8 +146,8 @@ export function PoidsPage({ year, setYear, vehicules, notify, refreshKey, onGoVe
         const isEdit = editing?.id === v.id && editing.day === d;
         const kg = sumKg(val);
         return (
-          <td key={d} className={`cell pcell ${val ? 'has' : kind(d)} ${isEdit ? 'sel' : ''}`} onClick={() => !isEdit && setEditing({ id: v.id, day: d })}
-            title={val?.p && val.p.length > 1 ? val.p.map(fmtKg).join(' + ') + ' = ' + fmtKg(kg) + ' kg' : undefined}>
+          <td key={d} className={`cell pcell ${val ? 'has' : kind(d)} ${isEdit ? 'sel' : ''} ${flash.has(cellKey(v.id, d)) ? 'flash' : ''}`} onClick={() => !isEdit && setEditing({ id: v.id, day: d })}
+            title={[val?.p && val.p.length > 1 ? val.p.map(fmtKg).join(' + ') + ' = ' + fmtKg(kg) + ' kg' : '', describeEdit(doc.cells[cellKey(v.id, d)]) ?? ''].filter(Boolean).join('\n') || undefined}>
             {isEdit ? (
               <input className="pedit" autoFocus defaultValue={formatPoidsInput(val)} onFocus={(e) => e.currentTarget.select()}
                 onKeyDown={(e) => onKey(e, v.id, d)}

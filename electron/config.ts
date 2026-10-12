@@ -13,9 +13,10 @@ export function getConfig(): AppConfig {
   const defaults: AppConfig = {
     dataDir: path.join(app.getPath('documents'), 'SuiviEquipe-donnees'),
     userName: os.hostname(),
+    configured: false,
   };
   try {
-    cache = { ...defaults, ...JSON.parse(fs.readFileSync(file(), 'utf8')) };
+    cache = { ...defaults, ...JSON.parse(fs.readFileSync(file(), 'utf8')), configured: true };
   } catch {
     cache = defaults;
   }
@@ -23,11 +24,11 @@ export function getConfig(): AppConfig {
 }
 
 export function setConfig(patch: Partial<AppConfig>): AppConfig {
-  const next: AppConfig = { ...getConfig(), ...patch };
+  const next: AppConfig = { ...getConfig(), ...patch, configured: true };
   if (!next.dataDir.trim()) throw new Error('Le chemin du dossier de données est vide.');
   if (!next.userName.trim()) next.userName = os.hostname();
   fs.mkdirSync(path.dirname(file()), { recursive: true });
-  fs.writeFileSync(file(), JSON.stringify(next, null, 2));
+  fs.writeFileSync(file(), JSON.stringify({ dataDir: next.dataDir, userName: next.userName }, null, 2));
   cache = next;
   return next;
 }

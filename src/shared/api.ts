@@ -33,8 +33,8 @@ export interface Api {
     get(): Promise<AppConfig>;
     set(patch: Partial<AppConfig>): Promise<AppConfig>;
     pickDir(): Promise<string | null>;
-    /** Vérifie que le dossier est accessible en écriture. */
-    check(): Promise<{ ok: boolean; error?: string }>;
+    /** Vérifie qu'un dossier (par défaut le dossier configuré) est accessible en écriture et indique s'il contient déjà des données. */
+    check(dir?: string): Promise<{ ok: boolean; error?: string; files?: number }>;
   };
   hs: {
     load(month: string): Promise<HsMonthDoc>;

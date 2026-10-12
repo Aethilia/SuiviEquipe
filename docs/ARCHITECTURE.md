@@ -83,4 +83,7 @@ Un agent n'est jamais supprimé, seulement désactivé : les saisies passées re
 * Verrou : fichier `<fichier>.lock` créé en mode exclusif, considéré périmé après 15 s.
 * Écriture atomique : fichier temporaire dans le même dossier puis `rename`. Un JSON illisible n'est jamais écrasé.
 * Rafraîchissement : sondage des `mtime/size` toutes les 3 s (`fs.watch` n'est pas fiable sur SMB). Les écritures du poste lui-même sont ignorées.
-* Hypothèse : les horloges des postes sont à peu près synchronisées (domaine Windows).
+* Horodatage : `t = max(maintenant, t_précédent_de_la_case + 1)`. Une modification faite après avoir vu celle d'un collègue l'emporte donc même si l'horloge du poste retarde.
+* Sauvegardes : copie du fichier avant la 1ʳᵉ écriture du jour dans `_sauvegardes/AAAA-MM-JJ/`, conservées 30 jours.
+* Surveillance : état de référence pris à l'instant du choix du dossier (aucune modification perdue avant le 1ᵉʳ sondage).
+* Tests : `tests/multiprocess.test.ts` lance 6 processus Node indépendants qui écrivent en même temps dans le même dossier.

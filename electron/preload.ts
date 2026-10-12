@@ -8,7 +8,7 @@ const api: Api = {
     get: () => call('config:get'),
     set: (patch) => call('config:set', patch),
     pickDir: () => call('config:pickDir'),
-    check: () => call('config:check'),
+    check: (dir) => call('config:check', dir),
   },
   hs: {
     load: (month) => call('hs:load', month),

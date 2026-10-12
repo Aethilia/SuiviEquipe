@@ -54,8 +54,10 @@ async function scan(): Promise<ChangeEvent[]> {
  * Surveillance par sondage (fs.watch n'est pas fiable sur les partages SMB).
  * Un passage toutes les 3 s : quelques `stat` sur ~13 fichiers.
  */
-export function startWatcher(emit: (e: ChangeEvent) => void): void {
+export async function startWatcher(emit: (e: ChangeEvent) => void): Promise<void> {
   stopWatcher();
+  // État de référence immédiat : tout ce qui change après cet appel sera signalé (rien n'est perdu avant le 1er sondage).
+  await scan();
   let busy = false;
   timer = setInterval(async () => {
     if (busy) return;

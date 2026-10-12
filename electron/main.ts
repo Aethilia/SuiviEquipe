@@ -42,9 +42,10 @@ function emit(channel: string, payload: unknown) {
 
 function registerIpc() {
   ipcMain.handle('config:get', () => getConfig());
-  ipcMain.handle('config:set', (_e, patch) => {
+  ipcMain.handle('config:set', async (_e, patch) => {
     const next = setConfig(patch);
-    startWatcher((ev) => emit('data:changed', ev));
+    await startWatcher((ev) => emit('data:changed', ev));
+    void storage.pruneBackups();
     return next;
   });
   ipcMain.handle('config:pickDir', async () => {
@@ -55,7 +56,7 @@ function registerIpc() {
     });
     return r.canceled ? null : r.filePaths[0];
   });
-  ipcMain.handle('config:check', () => storage.checkDir());
+  ipcMain.handle('config:check', (_e, dir?: string) => storage.checkDir(dir));
 
   ipcMain.handle('hs:load', (_e, month: string) => storage.loadMonth(month));
   ipcMain.handle('hs:loadYear', (_e, year: number) => storage.loadYear(year));
@@ -126,7 +127,8 @@ if (!gotLock) {
   void app.whenReady().then(() => {
     registerIpc();
     createWindow();
-    startWatcher((ev) => emit('data:changed', ev));
+    void startWatcher((ev) => emit('data:changed', ev));
+    void storage.pruneBackups();
   });
   app.on('window-all-closed', () => {
     stopWatcher();

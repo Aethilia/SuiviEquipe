@@ -90,3 +90,41 @@ describe('stockage partagé', () => {
     await expect(storage.saveVehicules([{ id: 'x', nom: 'X', section: 'nuit' as never, ordre: 1, actif: true }])).rejects.toThrow(/Section/);
   });
 });
+
+describe('horloges décalées et sauvegardes', () => {
+  let storage: typeof import('../electron/storage');
+  beforeAll(async () => {
+    storage = await import('../electron/storage');
+  });
+
+  it('une modification faite après celle d\'un poste en avance l\'emporte quand même', async () => {
+    const file = path.join(dir, 'partage', 'hs', '2026-06.json');
+    await storage.setCell('2026-06', 'a', 1, 'VN');
+    const disk = JSON.parse(fs.readFileSync(file, 'utf8'));
+    disk.cells['a|1'] = { v: 'ES', t: Date.now() + 3_600_000, by: 'poste-en-avance-d-une-heure' };
+    fs.writeFileSync(file, JSON.stringify(disk));
+    const after = await storage.setCell('2026-06', 'a', 1, 'OM');
+    expect(after.cells['a|1'].v).toBe('OM');
+    expect(after.cells['a|1'].t).toBeGreaterThan(disk.cells['a|1'].t);
+  });
+
+  it('une sauvegarde par fichier et par jour, avant la première écriture', async () => {
+    await storage.setCell('2026-07', 'a', 1, 'VN'); // création : rien à sauvegarder
+    const day = new Date().toLocaleDateString('sv-SE');
+    const bdir = path.join(dir, 'partage', '_sauvegardes', day);
+    expect(fs.existsSync(path.join(bdir, 'hs-2026-07.json'))).toBe(false);
+    await storage.setCell('2026-07', 'a', 2, 'OM'); // 2e écriture : copie de l'état précédent
+    const saved = JSON.parse(fs.readFileSync(path.join(bdir, 'hs-2026-07.json'), 'utf8'));
+    expect(Object.keys(saved.cells)).toEqual(['a|1']);
+    await storage.setCell('2026-07', 'a', 3, 'ES'); // 3e écriture : la copie du jour n'est pas écrasée
+    expect(Object.keys(JSON.parse(fs.readFileSync(path.join(bdir, 'hs-2026-07.json'), 'utf8')).cells)).toEqual(['a|1']);
+  });
+
+  it('supprime les sauvegardes de plus de 30 jours', async () => {
+    const base = path.join(dir, 'partage', '_sauvegardes');
+    fs.mkdirSync(path.join(base, '2020-01-01'), { recursive: true });
+    await storage.pruneBackups();
+    expect(fs.existsSync(path.join(base, '2020-01-01'))).toBe(false);
+    expect(fs.readdirSync(base).length).toBeGreaterThan(0);
+  });
+});
