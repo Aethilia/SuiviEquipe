@@ -5,6 +5,8 @@ import * as storage from './storage';
 import { startWatcher, stopWatcher } from './watcher';
 import { exportHs } from './excel/exportHs';
 import { importHs } from './excel/importHs';
+import { exportPoids } from './excel/exportPoids';
+import { importPoids } from './excel/importPoids';
 
 let win: BrowserWindow | null = null;
 
@@ -62,6 +64,12 @@ function registerIpc() {
   ipcMain.handle('agents:load', () => storage.loadAgents());
   ipcMain.handle('agents:save', (_e, list) => storage.saveAgents(list));
 
+  ipcMain.handle('poids:load', (_e, month: string) => storage.loadPoidsMonth(month));
+  ipcMain.handle('poids:loadYear', (_e, year: number) => storage.loadPoidsYear(year));
+  ipcMain.handle('poids:setCell', (_e, month, vehId, day, v) => storage.setPoidsCell(month, vehId, day, v));
+  ipcMain.handle('vehicules:load', () => storage.loadVehicules());
+  ipcMain.handle('vehicules:save', (_e, list) => storage.saveVehicules(list));
+
   ipcMain.handle('prestations:load', () => storage.loadPrestations());
   ipcMain.handle('prestations:save', (_e, list) => storage.savePrestations(list));
 
@@ -74,6 +82,25 @@ function registerIpc() {
     if (r.canceled || !r.filePath) return null;
     await exportHs(year, r.filePath);
     return r.filePath;
+  });
+  ipcMain.handle('excel:exportPoids', async (_e, year: number) => {
+    const r = await dialog.showSaveDialog(win!, {
+      title: 'Exporter les pesées',
+      defaultPath: `Calendrier poids fourgons ${year}.xlsx`,
+      filters: [{ name: 'Classeur Excel', extensions: ['xlsx'] }],
+    });
+    if (r.canceled || !r.filePath) return null;
+    await exportPoids(year, r.filePath);
+    return r.filePath;
+  });
+  ipcMain.handle('excel:importPoids', async (_e, year: number) => {
+    const r = await dialog.showOpenDialog(win!, {
+      title: 'Importer le classeur « Calendrier poids fourgons »',
+      properties: ['openFile'],
+      filters: [{ name: 'Classeur Excel', extensions: ['xlsx', 'xlsm'] }],
+    });
+    if (r.canceled) return null;
+    return importPoids(year, r.filePaths[0]);
   });
   ipcMain.handle('excel:importHs', async (_e, year: number) => {
     const r = await dialog.showOpenDialog(win!, {

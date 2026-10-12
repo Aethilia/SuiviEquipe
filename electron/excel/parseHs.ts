@@ -34,6 +34,23 @@ const monthIndex = (sheetName: string): number => {
 };
 
 /** `knownCodes` : codes de prestation du référentiel ; toute autre valeur de case est signalée et ignorée. */
+/** Repère la ligne d'en-tête (jours 1..31, parfois stockés comme du texte) et la colonne de chaque jour. */
+export function findDayHeader(ws: ExcelJS.Worksheet): { headerRow: number; dayCol: Map<number, number> } | null {
+  for (let r = 1; r <= Math.min(ws.rowCount, 20); r++) {
+    const cols = new Map<number, number>();
+    ws.getRow(r).eachCell((c, col) => {
+      const v = plain(c.value);
+      const n = typeof v === 'number' ? v : typeof v === 'string' && /^\d{1,2}$/.test(v.trim()) ? Number(v) : NaN;
+      if (Number.isInteger(n) && n >= 1 && n <= 31) cols.set(col, n);
+    });
+    // Jour -> colonne (col -> jour)
+    if (cols.size >= 28) return { headerRow: r, dayCol: cols };
+  }
+  return null;
+}
+
+export const cellText = (v: ExcelJS.CellValue): string => text(v);
+
 export function parseHsWorkbook(wb: ExcelJS.Workbook, year: number, knownCodes: readonly string[]): ParsedHs {
   const known = new Set(knownCodes.map(normalizeCode));
   const out: ParsedHs = { agents: [], months: {}, warnings: [] };
@@ -51,26 +68,12 @@ export function parseHsWorkbook(wb: ExcelJS.Workbook, year: number, knownCodes: 
     const m = monthIndex(ws.name);
     if (!m) continue;
 
-    // En-tête : ligne contenant les jours 1..31 en nombres.
-    let headerRow = 0;
-    const dayCol = new Map<number, number>();
-    for (let r = 1; r <= Math.min(ws.rowCount, 20) && !headerRow; r++) {
-      const cols = new Map<number, number>();
-      ws.getRow(r).eachCell((c, col) => {
-        // Les numéros de jour sont parfois stockés comme du texte ("1") dans les classeurs de l'équipe.
-        const v = plain(c.value);
-        const n = typeof v === 'number' ? v : typeof v === 'string' && /^\d{1,2}$/.test(v.trim()) ? Number(v) : NaN;
-        if (Number.isInteger(n) && n >= 1 && n <= 31) cols.set(col, n);
-      });
-      if (cols.size >= 28) {
-        headerRow = r;
-        cols.forEach((d, c) => dayCol.set(c, d));
-      }
-    }
-    if (!headerRow) {
+    const header = findDayHeader(ws);
+    if (!header) {
       out.warnings.push(`Feuille « ${ws.name} » : ligne des jours (1 à 31) introuvable, feuille ignorée.`);
       continue;
     }
+    const { headerRow, dayCol } = header;
     const firstDayCol = Math.min(...dayCol.keys());
     const nbDays = daysInMonth(year, m);
     const entries: ParsedHs['months'][number] = [];

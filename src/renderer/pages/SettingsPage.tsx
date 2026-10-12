@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { AppConfig, ImportReport } from '../../shared/types';
+import type { AppConfig, ImportPoidsReport, ImportReport } from '../../shared/types';
 import { errMsg, type Notify } from '../hooks';
 
 interface Props {
@@ -14,6 +14,7 @@ export function SettingsPage({ config, year, notify, onConfig, onImported }: Pro
   const [dataDir, setDataDir] = useState(config.dataDir);
   const [userName, setUserName] = useState(config.userName);
   const [report, setReport] = useState<ImportReport | null>(null);
+  const [reportP, setReportP] = useState<ImportPoidsReport | null>(null);
   const [busy, setBusy] = useState(false);
   const dirty = dataDir !== config.dataDir || userName !== config.userName;
 
@@ -36,6 +37,21 @@ export function SettingsPage({ config, year, notify, onConfig, onImported }: Pro
       const r = await window.api.excel.importHs(year);
       if (r) {
         setReport(r);
+        onImported();
+      }
+    } catch (e) {
+      notify(errMsg(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const doImportPoids = async () => {
+    setBusy(true);
+    try {
+      const r = await window.api.excel.importPoids(year);
+      if (r) {
+        setReportP(r);
         onImported();
       }
     } catch (e) {
@@ -78,6 +94,22 @@ export function SettingsPage({ config, year, notify, onConfig, onImported }: Pro
             <b>Import terminé.</b> {report.casesImportees} saisies importées ({report.moisTrouves.join(', ') || 'aucun mois'}), {report.agentsCrees} agents créés
             {report.casesIgnorees > 0 && `, ${report.casesIgnorees} cases déjà renseignées conservées`}.
             {report.avertissements.length > 0 && <ul>{report.avertissements.map((w, i) => <li key={i}>{w}</li>)}</ul>}
+          </div>
+        )}
+      </div>
+
+      <div className="card form">
+        <h2>Importer le classeur « Calendrier poids fourgons » (une seule fois)</h2>
+        <p className="muted" style={{ margin: 0 }}>
+          Lit les onglets de janvier à décembre pour l'année <b>{year}</b> : tournées de la semaine et du dimanche, poids, additions de vidages (conservées) et textes (« ouest »…).
+          Les noms de tournées varient d'un mois à l'autre dans le classeur : vérifiez ensuite la liste dans l'onglet Véhicules (renommer, supprimer, réordonner).
+        </p>
+        <div><button className="btn primary" onClick={doImportPoids} disabled={busy}>{busy ? 'Import en cours…' : 'Choisir le classeur Excel…'}</button></div>
+        {reportP && (
+          <div className="report">
+            <b>Import terminé.</b> {reportP.casesImportees} pesées importées ({reportP.moisTrouves.join(', ') || 'aucun mois'}), {reportP.vehiculesCrees} tournées créées
+            {reportP.casesIgnorees > 0 && `, ${reportP.casesIgnorees} cases déjà renseignées conservées`}.
+            {reportP.avertissements.length > 0 && <ul>{reportP.avertissements.map((w, i) => <li key={i}>{w}</li>)}</ul>}
           </div>
         )}
       </div>

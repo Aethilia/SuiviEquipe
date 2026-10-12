@@ -19,6 +19,15 @@ const api: Api = {
     load: () => call('agents:load'),
     save: (list) => call('agents:save', list),
   },
+  poids: {
+    load: (month) => call('poids:load', month),
+    loadYear: (year) => call('poids:loadYear', year),
+    setCell: (month, vehId, day, v) => call('poids:setCell', month, vehId, day, v),
+  },
+  vehicules: {
+    load: () => call('vehicules:load'),
+    save: (list) => call('vehicules:save', list),
+  },
   prestations: {
     load: () => call('prestations:load'),
     save: (list) => call('prestations:save', list),
@@ -26,6 +35,8 @@ const api: Api = {
   excel: {
     exportHs: (year) => call('excel:exportHs', year),
     importHs: (year) => call('excel:importHs', year),
+    exportPoids: (year) => call('excel:exportPoids', year),
+    importPoids: (year) => call('excel:importPoids', year),
   },
   onChange: (cb) => {
     const h = (_: unknown, e: Parameters<typeof cb>[0]) => cb(e);

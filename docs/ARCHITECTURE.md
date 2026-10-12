@@ -30,9 +30,10 @@ tests/                    vitest : fusion, fériés, stockage concurrent, import
 ```
 <dossier partagé>/
   hs/2026-01.json … 2026-12.json      un fichier par mois (module Heures sup)
-  poids/2026-01.json …                (module Poids, à venir)
+  poids/2026-01.json … 2026-12.json   un fichier par mois (module Poids)
   referentiel/agents.json             liste des agents
-  referentiel/vehicules.json          (à venir)
+  referentiel/prestations.json        types d'heures sup (VN, OM, ES, EX… libres)
+  referentiel/vehicules.json          véhicules / tournées (semaine ou dimanche)
 ```
 
 ### hs/AAAA-MM.json
@@ -51,6 +52,27 @@ tests/                    vitest : fusion, fériés, stockage concurrent, import
 { "version": 1, "agents": { "<id>": { "id": "…", "nom": "Dupont Jean", "ordre": 3, "actif": true, "matricule": "N0123380", "t": 1767225600000 } } }
 ```
 Un agent n'est jamais supprimé, seulement désactivé : les saisies passées restent lisibles.
+
+### poids/AAAA-MM.json
+```json
+{ "version": 1, "module": "poids", "month": "2026-01",
+  "cells": { "<vehiculeId>|<jour>": { "v": { "p": [600, 980, 660] }, "t": 1767225600000, "by": "POSTE-03" } } }
+```
+`v` = `{ "p": [kg, …] }` (plusieurs valeurs = plusieurs vidages, total = somme) ou `{ "txt": "ouest" }` (ne compte pas dans les totaux) ou `null` (effacée).
+
+### referentiel/vehicules.json
+```json
+{ "version": 1, "vehicules": { "<id>": { "id": "…", "nom": "FOURGON 5", "section": "semaine", "ordre": 5, "actif": true, "t": 1767225600000 } } }
+```
+`section` = `semaine` ou `dimanche` : « FOURGON 5 » peut exister dans les deux. Comme pour les agents : désactiver garde l'historique, supprimer masque partout.
+
+## Import des classeurs Excel
+
+* Les « tableaux Excel » des classeurs de l'équipe font planter ExcelJS : `excel/load.ts` les retire en mémoire avant lecture.
+* L'en-tête (jours 1 à 31, souvent stockés comme du texte) est repéré dynamiquement : sa ligne varie d'un mois à l'autre.
+* Poids : séparateur `DIMANCHE…`, arrêt à la ligne `… total`, additions `=600+980+660` conservées comme plusieurs vidages, textes (`ouest`) conservés.
+  Les tournées nouvelles sont insérées après leur voisine de la feuille ; un doublon de nom dans une même section devient « NOM (2) ».
+* Les imports n'écrasent jamais une case déjà saisie et sont idempotents.
 
 ## Concurrence (pas de serveur)
 

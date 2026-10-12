@@ -1,4 +1,4 @@
-import type { Agent, AgentsDoc, CellEntry, Code, HsMonthDoc, Prestation, PrestationsDoc } from './types';
+import type { Agent, AgentsDoc, CellEntry, Code, HsMonthDoc, PoidsMonthDoc, PoidsValue, Prestation, PrestationsDoc, VehiculesDoc } from './types';
 
 type Stamped = { t: number; by?: string };
 
@@ -39,6 +39,40 @@ export function mergePrestations(a: PrestationsDoc, b: PrestationsDoc): Prestati
     if (!cur || p.t > cur.t || (p.t === cur.t && p.label > cur.label)) prestations[k] = p;
   }
   return { ...a, prestations };
+}
+
+export function emptyPoidsMonth(month: string): PoidsMonthDoc {
+  return { version: 1, module: 'poids', month, cells: {} };
+}
+
+export function emptyVehicules(): VehiculesDoc {
+  return { version: 1, vehicules: {} };
+}
+
+export function mergePoidsMonth(a: PoidsMonthDoc, b: PoidsMonthDoc): PoidsMonthDoc {
+  const cells = { ...a.cells };
+  for (const [k, entry] of Object.entries(b.cells)) {
+    const cur = cells[k];
+    if (!cur || wins(entry, cur)) cells[k] = entry;
+  }
+  return { ...a, cells };
+}
+
+export function mergeVehicules(a: VehiculesDoc, b: VehiculesDoc): VehiculesDoc {
+  const vehicules = { ...a.vehicules };
+  for (const [id, v] of Object.entries(b.vehicules)) {
+    const cur = vehicules[id];
+    if (!cur || v.t > cur.t || (v.t === cur.t && v.nom > cur.nom)) vehicules[id] = v;
+  }
+  return { ...a, vehicules };
+}
+
+export function applyPoidsCell(doc: PoidsMonthDoc, vehId: string, day: number, v: PoidsValue | null, t: number, by: string): PoidsMonthDoc {
+  const entry = { v, t, by };
+  const k = cellKey(vehId, day);
+  const cur = doc.cells[k];
+  if (cur && !wins(entry, cur)) return doc;
+  return { ...doc, cells: { ...doc.cells, [k]: entry } };
 }
 
 export function mergeAgents(a: AgentsDoc, b: AgentsDoc): AgentsDoc {

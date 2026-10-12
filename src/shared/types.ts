@@ -69,10 +69,67 @@ export interface AppConfig {
   userName: string;
 }
 
-export type ChangeEvent = { kind: 'hs'; month: string } | { kind: 'agents' } | { kind: 'prestations' };
+export type ChangeEvent =
+  | { kind: 'hs'; month: string }
+  | { kind: 'poids'; month: string }
+  | { kind: 'agents' }
+  | { kind: 'prestations' }
+  | { kind: 'vehicules' };
 
 export interface ImportReport {
   agentsCrees: number;
+  casesImportees: number;
+  casesIgnorees: number;
+  moisTrouves: string[];
+  avertissements: string[];
+}
+
+// ---------- Module Poids des fourgons ----------
+
+/** Contenu d'une case de pesée : des vidages (kg) OU un texte (« ouest », « sapins »…). */
+export interface PoidsValue {
+  /** Poids de chaque vidage, en kg. Plusieurs valeurs = plusieurs vidages dans la journée (le total est leur somme). */
+  p?: number[];
+  /** Texte libre : véhicule affecté ailleurs, absent, etc. Ne compte pas dans les totaux. */
+  txt?: string;
+}
+
+export interface PoidsCellEntry {
+  v: PoidsValue | null;
+  t: number;
+  by: string;
+}
+
+/** Fichier poids/AAAA-MM.json */
+export interface PoidsMonthDoc {
+  version: 1;
+  module: 'poids';
+  month: string;
+  /** Clé = `${vehiculeId}|${jour}` */
+  cells: Record<string, PoidsCellEntry>;
+}
+
+export type Section = 'semaine' | 'dimanche';
+
+export interface Vehicule {
+  id: string;
+  nom: string;
+  /** « semaine » = lignes du haut ; « dimanche » = bande « Tournées du dimanche ». */
+  section: Section;
+  ordre: number;
+  actif: boolean;
+  supprime?: boolean;
+  t: number;
+}
+
+/** Fichier referentiel/vehicules.json */
+export interface VehiculesDoc {
+  version: 1;
+  vehicules: Record<string, Vehicule>;
+}
+
+export interface ImportPoidsReport {
+  vehiculesCrees: number;
   casesImportees: number;
   casesIgnorees: number;
   moisTrouves: string[];

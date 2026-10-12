@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { Agent, AppConfig } from '../shared/types';
-import { errMsg, useAgents } from './hooks';
+import type { Agent, AppConfig, Section, Vehicule } from '../shared/types';
+import { errMsg, useAgents, useVehicules } from './hooks';
+import { PoidsPage } from './pages/PoidsPage';
+import { VehiculesPage } from './pages/VehiculesPage';
 import { AgentsPage } from './pages/AgentsPage';
 import { FeriesPage } from './pages/FeriesPage';
 import { HsPage } from './pages/HsPage';
@@ -13,10 +15,10 @@ type PageId = 'hs' | 'poids' | 'synthese' | 'agents' | 'prestations' | 'vehicule
 
 const NAV: { id: PageId; label: string; soon?: boolean }[] = [
   { id: 'hs', label: 'Heures sup' },
-  { id: 'poids', label: 'Poids fourgons', soon: true },
+  { id: 'poids', label: 'Poids fourgons' },
   { id: 'synthese', label: 'Synthèse annuelle' },
   { id: 'agents', label: 'Agents' },
-  { id: 'vehicules', label: 'Véhicules', soon: true },
+  { id: 'vehicules', label: 'Véhicules' },
   { id: 'feries', label: 'Jours fériés' },
   { id: 'params', label: 'Paramètres' },
 ];
@@ -37,6 +39,7 @@ export function App() {
   }, []);
 
   const { agents, reload: reloadAgents } = useAgents(notify);
+  const { vehicules, reload: reloadVehicules } = useVehicules(notify);
 
   const checkDir = useCallback(async () => {
     try {
@@ -73,15 +76,37 @@ export function App() {
     }
   }, [notify, reloadAgents]);
 
+  const addVehicule = useCallback(async (nom: string, section: Section) => {
+    try {
+      const ordre = vehicules.reduce((m, v) => Math.max(m, v.ordre), 0) + 1;
+      await window.api.vehicules.save([{ id: crypto.randomUUID(), nom, section, ordre, actif: true }]);
+      await reloadVehicules();
+    } catch (e) {
+      notify(errMsg(e));
+    }
+  }, [vehicules, notify, reloadVehicules]);
+
+  const removeVehicule = useCallback(async (v: Vehicule) => {
+    if (!window.confirm(`Supprimer « ${v.nom} » ?\n\nElle disparaîtra de toutes les grilles et des exports. (Pour la garder dans l'historique, décochez « Actif » dans l'onglet Véhicules.)`)) return;
+    try {
+      await window.api.vehicules.save([{ ...v, supprime: true }]);
+      await reloadVehicules();
+    } catch (e) {
+      notify(errMsg(e));
+    }
+  }, [notify, reloadVehicules]);
+
   const afterConfigChange = (c: AppConfig) => {
     setConfig(c);
     setRefreshKey((k) => k + 1);
     void reloadAgents();
+    void reloadVehicules();
     void checkDir();
   };
   const afterImport = () => {
     setRefreshKey((k) => k + 1);
     void reloadAgents();
+    void reloadVehicules();
   };
 
   return (
@@ -90,7 +115,7 @@ export function App() {
       <nav className="nav">
         <div className="brand"><i /> Suivi Équipe</div>
         {NAV.map((n) => (
-          <button key={n.id} className={`pill ${page === n.id || (n.id === 'hs' && page === 'prestations') ? 'active' : ''}`} disabled={n.soon} title={n.soon ? 'Prochaine étape' : undefined} onClick={() => setPage(n.id)}>
+          <button key={n.id} className={`pill ${page === n.id || (n.id === 'hs' && page === 'prestations') || (n.id === 'poids' && page === 'vehicules') ? 'active' : ''}`} disabled={n.soon} title={n.soon ? 'Prochaine étape' : undefined} onClick={() => setPage(n.id)}>
             {n.label}
           </button>
         ))}
@@ -101,7 +126,9 @@ export function App() {
       </nav>
 
       {page === 'hs' && <HsPage year={year} setYear={setYear} agents={agents} notify={notify} refreshKey={refreshKey} onGoSettings={() => setPage('params')} onGoPrestations={() => setPage('prestations')} onAddAgent={addAgent} onRemoveAgent={removeAgent} />}
-      {page === 'synthese' && <SynthesePage year={year} setYear={setYear} agents={agents} notify={notify} refreshKey={refreshKey} />}
+      {page === 'poids' && <PoidsPage year={year} setYear={setYear} vehicules={vehicules} notify={notify} refreshKey={refreshKey} onGoVehicules={() => setPage('vehicules')} onAddVehicule={addVehicule} onRemoveVehicule={removeVehicule} />}
+      {page === 'vehicules' && <VehiculesPage vehicules={vehicules} notify={notify} reload={reloadVehicules} onBack={() => setPage('poids')} />}
+      {page === 'synthese' && <SynthesePage year={year} setYear={setYear} agents={agents} vehicules={vehicules} notify={notify} refreshKey={refreshKey} />}
       {page === 'agents' && <AgentsPage agents={agents} notify={notify} reload={reloadAgents} />}
       {page === 'prestations' && <PrestationsPage notify={notify} onBack={() => setPage('hs')} />}
       {page === 'feries' && <FeriesPage year={year} setYear={setYear} />}

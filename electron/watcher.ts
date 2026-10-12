@@ -22,7 +22,7 @@ async function scan(): Promise<ChangeEvent[]> {
   const events: ChangeEvent[] = [];
   const seen = new Set<string>();
   const root = getConfig().dataDir;
-  for (const sub of ['hs', 'referentiel']) {
+  for (const sub of ['hs', 'poids', 'referentiel']) {
     let names: string[] = [];
     try {
       names = await fs.promises.readdir(path.join(root, sub));
@@ -37,7 +37,8 @@ async function scan(): Promise<ChangeEvent[]> {
         const sig = sigOf(await fs.promises.stat(f));
         if (sigs.get(f) !== sig) {
           sigs.set(f, sig);
-          if (primed) events.push(sub === 'hs' ? { kind: 'hs', month: n.replace(/\.json$/, '') } : n === 'prestations.json' ? { kind: 'prestations' } : { kind: 'agents' });
+          const month = n.replace(/\.json$/, '');
+          if (primed) events.push(sub === 'hs' ? { kind: 'hs', month } : sub === 'poids' ? { kind: 'poids', month } : n === 'prestations.json' ? { kind: 'prestations' } : n === 'vehicules.json' ? { kind: 'vehicules' } : { kind: 'agents' });
         }
       } catch {
         /* fichier en cours de remplacement : on réessaie au prochain passage */

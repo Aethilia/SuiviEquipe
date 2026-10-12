@@ -135,3 +135,50 @@ table.list { border-collapse: collapse; width: 100%; }
 .quiet { border: 0; background: transparent; color: var(--muted); opacity: .6; padding: 4px 8px; border-radius: 8px; font-size: 12.5px; }
 .quiet:hover, .quiet:focus-visible { opacity: 1; background: var(--pill-bg); color: var(--pill-fg); outline: none; }
 .legend .quiet { margin-left: auto; font-size: 14px; }
+
+/* ---------- Poids fourgons ---------- */
+.seg { display: inline-flex; background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
+.seg button { border: 0; background: transparent; padding: 5px 14px; border-radius: 999px; color: var(--muted); font-weight: 500; }
+.seg button.on { background: var(--pill-bg); color: var(--pill-fg); font-weight: 600; }
+.weeks { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.weeks::before { content: 'Semaine du'; color: var(--muted); font-size: 12.5px; margin-right: 2px; }
+.wk { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 4px 13px; font-weight: 500; color: var(--muted); }
+.wk.on { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+.grid.poids td.cell { min-width: 42px; font-variant-numeric: tabular-nums; }
+.grid.poids thead th { min-width: 42px; }
+.poids .kg { font-size: 12.5px; font-weight: 500; white-space: nowrap; }
+.grid.poids td.pcell { position: relative; }
+.poids .nx { position: absolute; top: 1px; right: 2px; font-size: 8.5px; font-weight: 700; background: var(--accent); color: #fff; border-radius: 999px; padding: 0 4px; line-height: 10px; }
+.poids td.cell { padding: 0 4px; }
+.poids .ptxt { font-size: 11.5px; font-style: italic; color: #93a5a2; }
+.pedit { width: 100%; height: 30px; border: 0; background: #fff; text-align: center; font: inherit; font-size: 12.5px; padding: 0; outline: none; }
+.grid.poids td.sel { background: #fff; padding: 0; }
+.kgtot { font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; padding: 0 10px; }
+.kgtot.zero { color: #a9bbb8; font-weight: 500; }
+.grid.poids td.tot { min-width: 86px; }
+.grid tr.band td { height: 30px; background: var(--sun-bg); color: var(--sun-head); font-weight: 700; font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; border-bottom: 1px solid var(--line); }
+.grid tr.band td.name { background: var(--sun-bg); color: var(--sun-head); }
+.two { display: grid; grid-template-columns: minmax(300px, 1fr) minmax(300px, 1.4fr); gap: 14px; }
+.pad { padding: 16px 18px; }
+.chead { display: flex; align-items: center; justify-content: space-between; }
+.chead h2 { margin: 0 0 8px; }
+.rank { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
+.rank li { display: grid; grid-template-columns: 22px minmax(90px, 150px) 1fr 66px; align-items: center; gap: 10px; font-size: 13px; }
+.rank .pos { color: var(--muted); font-weight: 600; text-align: right; }
+.rank .rname { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rank em { color: var(--sun-head); font-style: normal; font-size: 11px; }
+.rank .rbar { height: 8px; border-radius: 4px; background: var(--total-bg); overflow: hidden; }
+.rank .rbar i { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
+.rank b { text-align: right; font-variant-numeric: tabular-nums; }
+.bars { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 4px; height: 170px; align-items: end; }
+.bcol { display: flex; flex-direction: column; height: 100%; gap: 4px; font-size: 10.5px; color: var(--muted); text-align: center; }
+.btrack { flex: 1; display: flex; align-items: flex-end; border-radius: 5px; background: var(--total-bg); overflow: hidden; }
+.btrack i { display: block; width: 100%; background: var(--accent); border-radius: 5px 5px 0 0; min-height: 0; }
+.bcol.sun .btrack i { background: var(--sun-head); } .bcol.hol .btrack i { background: var(--hol-head); }
+.bcol.sun span { color: var(--sun-head); font-weight: 700; } .bcol.hol span { color: var(--hol-head); font-weight: 700; }
+@media (max-width: 1100px) { .two { grid-template-columns: 1fr; } }
+
+/* Les cartes de liste gardent leur hauteur (la page défile) ; seule la grille s'adapte à la fenêtre. */
+.page > * { flex-shrink: 0; }
+.page > .gridwrap { flex-shrink: 1; }
+.list td:first-child { white-space: nowrap; }

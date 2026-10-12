@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { applyCell, emptyMonth } from '../shared/merge';
-import type { Agent, Code, HsMonthDoc } from '../shared/types';
+import { applyCell, applyPoidsCell, emptyMonth, emptyPoidsMonth } from '../shared/merge';
+import type { Agent, Code, HsMonthDoc, PoidsMonthDoc, PoidsValue, Vehicule } from '../shared/types';
 
 export const errMsg = (e: unknown): string => (e instanceof Error ? e.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : String(e));
 
@@ -70,4 +70,63 @@ export function useHsMonth(year: number, month: number, notify: Notify, refreshK
   );
 
   return { doc, loading, setCell };
+}
+
+/** Référentiel des véhicules / tournées. */
+export function useVehicules(notify: Notify) {
+  const [vehicules, setVehicules] = useState<Vehicule[]>([]);
+
+  const reload = useCallback(async () => {
+    try {
+      setVehicules(Object.values((await window.api.vehicules.load()).vehicules));
+    } catch (e) {
+      notify(errMsg(e));
+    }
+  }, [notify]);
+
+  useEffect(() => {
+    void reload();
+    return window.api.onChange((ev) => ev.kind === 'vehicules' && void reload());
+  }, [reload]);
+
+  return { vehicules, reload };
+}
+
+/** Document de pesées d'un mois, avec saisie optimiste et rafraîchissement sur modification distante. */
+export function usePoidsMonth(year: number, month: number, notify: Notify, refreshKey: unknown) {
+  const key = `${year}-${String(month).padStart(2, '0')}`;
+  const [doc, setDoc] = useState<PoidsMonthDoc>(() => emptyPoidsMonth(key));
+  const current = useRef(key);
+  current.current = key;
+
+  const reload = useCallback(async () => {
+    try {
+      const d = await window.api.poids.load(key);
+      if (current.current === key) setDoc(d);
+    } catch (e) {
+      notify(errMsg(e));
+    }
+  }, [key, notify]);
+
+  useEffect(() => {
+    setDoc(emptyPoidsMonth(key));
+    void reload();
+    return window.api.onChange((ev) => ev.kind === 'poids' && ev.month === key && void reload());
+  }, [key, reload, refreshKey]);
+
+  const setCell = useCallback(
+    async (vehId: string, day: number, v: PoidsValue | null) => {
+      setDoc((d) => applyPoidsCell(d, vehId, day, v, Date.now(), 'moi'));
+      try {
+        const saved = await window.api.poids.setCell(key, vehId, day, v);
+        if (current.current === key) setDoc(saved);
+      } catch (e) {
+        notify(errMsg(e));
+        void reload();
+      }
+    },
+    [key, notify, reload],
+  );
+
+  return { doc, setCell };
 }

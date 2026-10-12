@@ -1,4 +1,4 @@
-import type { Agent, AgentsDoc, AppConfig, ChangeEvent, HsMonthDoc, ImportReport, Code, PrestationsDoc } from './types';
+import type { Agent, AgentsDoc, AppConfig, ChangeEvent, HsMonthDoc, ImportPoidsReport, ImportReport, Code, PoidsMonthDoc, PoidsValue, PrestationsDoc, Section, VehiculesDoc } from './types';
 
 export interface AgentInput {
   id: string;
@@ -6,6 +6,15 @@ export interface AgentInput {
   ordre: number;
   actif: boolean;
   matricule?: string;
+  supprime?: boolean;
+}
+
+export interface VehiculeInput {
+  id: string;
+  nom: string;
+  section: Section;
+  ordre: number;
+  actif: boolean;
   supprime?: boolean;
 }
 
@@ -36,6 +45,15 @@ export interface Api {
     load(): Promise<AgentsDoc>;
     save(list: AgentInput[]): Promise<AgentsDoc>;
   };
+  poids: {
+    load(month: string): Promise<PoidsMonthDoc>;
+    loadYear(year: number): Promise<PoidsMonthDoc[]>;
+    setCell(month: string, vehId: string, day: number, v: PoidsValue | null): Promise<PoidsMonthDoc>;
+  };
+  vehicules: {
+    load(): Promise<VehiculesDoc>;
+    save(list: VehiculeInput[]): Promise<VehiculesDoc>;
+  };
   prestations: {
     load(): Promise<PrestationsDoc>;
     save(list: PrestationInput[]): Promise<PrestationsDoc>;
@@ -43,6 +61,8 @@ export interface Api {
   excel: {
     exportHs(year: number): Promise<string | null>;
     importHs(year: number): Promise<ImportReport | null>;
+    exportPoids(year: number): Promise<string | null>;
+    importPoids(year: number): Promise<ImportPoidsReport | null>;
   };
   onChange(cb: (e: ChangeEvent) => void): () => void;
 }

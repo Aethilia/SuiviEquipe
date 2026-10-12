@@ -1,28 +1,10 @@
 import ExcelJS from 'exceljs';
+import { COLORS, argb, box, center, fill } from './style';
 import { dateStr, daysInMonth, MONTHS_FR, WEEKDAY_LETTER, weekday } from '../../src/shared/calendar';
 import { holidayMap } from '../../src/shared/holidays';
 import { cellValue, monthStats, visibleAgents } from '../../src/shared/stats';
 import { FALLBACK_COLOR, textColorOn } from '../../src/shared/prestations';
 import type { Agent, HsMonthDoc, Prestation } from '../../src/shared/types';
-
-const COLORS = {
-  accent: 'FF0F766E',
-  dark: 'FF0B3B37',
-  totalRow: 'FFE3F2EF',
-  sunday: 'FFFCEBD6',
-  sundayHead: 'FFB86A00',
-  holiday: 'FFF9D8D6',
-  holidayHead: 'FFB03A2E',
-  head: 'FFDDF1EE',
-  border: 'FFDCE7E4',
-};
-
-const fill = (argb: string): ExcelJS.Fill => ({ type: 'pattern', pattern: 'solid', fgColor: { argb } });
-const thin = { style: 'thin' as const, color: { argb: COLORS.border } };
-const box: Partial<ExcelJS.Borders> = { top: thin, left: thin, bottom: thin, right: thin };
-const center: Partial<ExcelJS.Alignment> = { horizontal: 'center', vertical: 'middle' };
-
-const argb = (hex: string) => 'FF' + hex.replace('#', '').toUpperCase();
 
 export function buildHsWorkbook(year: number, docs: HsMonthDoc[], allAgents: Agent[], prestations: Prestation[]): ExcelJS.Workbook {
   const byCode = new Map(prestations.map((p) => [p.code, p]));

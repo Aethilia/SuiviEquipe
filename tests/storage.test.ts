@@ -63,4 +63,30 @@ describe('stockage partagé', () => {
     expect(doc.agents.u2.supprime).toBe(true);
     expect(visibleAgents(Object.values(doc.agents), []).map((a) => a.id)).not.toContain('u2');
   });
+
+  it('pesées : écritures simultanées sans perte, valeur invalide refusée, fusion avec un autre poste', async () => {
+    await Promise.all(Array.from({ length: 30 }, (_, i) => storage.setPoidsCell('2026-04', `v${i % 6}`, (i % 28) + 1, i % 3 ? { p: [600, 400 + i] } : { txt: 'ouest' })));
+    const doc = await storage.loadPoidsMonth('2026-04');
+    expect(Object.keys(doc.cells).length).toBeGreaterThanOrEqual(25);
+    expect(fs.readdirSync(path.join(dir, 'partage', 'poids'))).toEqual(['2026-04.json']);
+    await expect(storage.setPoidsCell('2026-04', 'v1', 1, { p: [-5] })).rejects.toThrow(/invalide/);
+    const file = path.join(dir, 'partage', 'poids', '2026-05.json');
+    await storage.setPoidsCell('2026-05', 'a', 1, { p: [1000] });
+    const disk = JSON.parse(fs.readFileSync(file, 'utf8'));
+    disk.cells['b|2'] = { v: { p: [250] }, t: Date.now() + 5, by: 'autre-poste' };
+    fs.writeFileSync(file, JSON.stringify(disk));
+    const merged = await storage.setPoidsCell('2026-05', 'a', 3, { txt: 'ouest' });
+    expect(Object.keys(merged.cells).sort()).toEqual(['a|1', 'a|3', 'b|2']);
+  });
+
+  it('véhicules : même nom autorisé dans deux sections, suppression, section invalide refusée', async () => {
+    await storage.saveVehicules([
+      { id: 'f5s', nom: 'FOURGON 5', section: 'semaine', ordre: 1, actif: true },
+      { id: 'f5d', nom: 'FOURGON 5', section: 'dimanche', ordre: 2, actif: true },
+    ]);
+    const doc = await storage.saveVehicules([{ id: 'f5d', nom: 'FOURGON 5', section: 'dimanche', ordre: 2, actif: true, supprime: true }]);
+    expect(doc.vehicules.f5s.supprime).toBeUndefined();
+    expect(doc.vehicules.f5d.supprime).toBe(true);
+    await expect(storage.saveVehicules([{ id: 'x', nom: 'X', section: 'nuit' as never, ordre: 1, actif: true }])).rejects.toThrow(/Section/);
+  });
 });
