@@ -2,11 +2,12 @@ import { useCallback, useMemo, useState } from 'react';
 import { dateStr, daysInMonth, MONTHS_FR, MONTHS_SHORT, WEEKDAY_FR, WEEKDAY_LETTER, weekday } from '../../shared/calendar';
 import { holidayMap } from '../../shared/holidays';
 import { cellValue, monthStats, visibleAgents } from '../../shared/stats';
-import { CODE_LABELS, CODES, type Agent, type Code } from '../../shared/types';
+import type { Agent, Code } from '../../shared/types';
 import { CodeBadge } from '../components/CodeBadge';
 import { CodePicker } from '../components/CodePicker';
 import { YearPicker } from '../components/YearPicker';
 import { errMsg, useHsMonth, type Notify } from '../hooks';
+import { usePrestations } from '../prestations';
 
 interface Props {
   year: number;
@@ -15,9 +16,13 @@ interface Props {
   notify: Notify;
   refreshKey: number;
   onGoSettings: () => void;
+  onAddAgent: (nom: string) => Promise<void>;
+  onRemoveAgent: (a: Agent) => Promise<void>;
 }
 
-export function HsPage({ year, setYear, agents, notify, refreshKey, onGoSettings }: Props) {
+export function HsPage({ year, setYear, agents, notify, refreshKey, onGoSettings, onAddAgent, onRemoveAgent }: Props) {
+  const { all: prestations } = usePrestations();
+  const [newAgent, setNewAgent] = useState('');
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const { doc, loading, setCell } = useHsMonth(year, month, notify, refreshKey);
   const [sel, setSel] = useState<{ agent: Agent; day: number; rect: DOMRect } | null>(null);
@@ -27,6 +32,8 @@ export function HsPage({ year, setYear, agents, notify, refreshKey, onGoSettings
   const feries = useMemo(() => holidayMap(year), [year]);
   const rows = useMemo(() => visibleAgents(agents, [doc]), [agents, doc]);
   const stats = useMemo(() => monthStats(doc, rows.map((a) => a.id), n), [doc, rows, n]);
+  // Prestations du référentiel + codes présents dans les données mais supprimés du référentiel.
+  const splitCodes = [...prestations.map((p) => p.code), ...Object.keys(stats.byCode).filter((c) => !prestations.some((p) => p.code === c))];
   const days = Array.from({ length: n }, (_, i) => i + 1);
   const kind = (d: number) => (feries.has(dateStr(year, month, d)) ? 'hol' : weekday(year, month, d) === 0 ? 'sun' : '');
 
@@ -78,11 +85,11 @@ export function HsPage({ year, setYear, agents, notify, refreshKey, onGoSettings
         <div className="card kpi">
           <div className="label">Répartition par prestation</div>
           <div className="split">
-            {CODES.map((c) => (
+            {splitCodes.map((c) => (
               <div className="row" key={c}>
                 <CodeBadge code={c} />
-                <div className="bar"><i style={{ width: `${stats.total ? (stats.byCode[c] / stats.total) * 100 : 0}%`, background: `var(--c-${c.toLowerCase()})` }} /></div>
-                <b>{stats.byCode[c]}</b>
+                <div className="bar"><i style={{ width: `${stats.total ? ((stats.byCode[c] ?? 0) / stats.total) * 100 : 0}%`, background: prestations.find((p) => p.code === c)?.color ?? '#7a8b88' }} /></div>
+                <b>{stats.byCode[c] ?? 0}</b>
               </div>
             ))}
           </div>
@@ -90,18 +97,19 @@ export function HsPage({ year, setYear, agents, notify, refreshKey, onGoSettings
       </div>
 
       <div className="legend">
-        {CODES.map((c) => <span key={c}><CodeBadge code={c} /> {CODE_LABELS[c]}</span>)}
+        {prestations.filter((p) => p.actif).map((p) => <span key={p.code}><CodeBadge code={p.code} /> {p.label}</span>)}
         <span><i className="sw" style={{ background: 'var(--sun-bg)', border: '1px solid var(--sun-head)' }} /> Dimanche</span>
         <span><i className="sw" style={{ background: 'var(--hol-bg)', border: '1px solid var(--hol-head)' }} /> Jour férié</span>
       </div>
 
       <div className="card gridwrap">
-        {rows.length === 0 && !loading ? (
+        {rows.length === 0 && !loading && agents.filter((a) => !a.supprime).length === 0 ? (
           <div className="empty">
-            Aucun agent pour l'instant. Ajoutez-les dans l'onglet « Agents », ou importez votre classeur Excel dans{' '}
+            Aucun agent pour l'instant. Ajoutez-en depuis la dernière ligne de la grille ou l'onglet « Agents », ou importez votre classeur Excel dans{' '}
             <a href="#" onClick={(e) => { e.preventDefault(); onGoSettings(); }}>Paramètres</a>.
           </div>
-        ) : (
+        ) : null}
+        {(
           <table className="grid">
             <thead>
               <tr>
@@ -121,7 +129,12 @@ export function HsPage({ year, setYear, agents, notify, refreshKey, onGoSettings
             <tbody>
               {rows.map((a) => (
                 <tr key={a.id}>
-                  <td className={`name ${a.actif ? '' : 'inactive'}`}>{a.nom}</td>
+                  <td className={`name ${a.actif ? '' : 'inactive'}`}>
+                    <div className="nm">
+                      <span>{a.nom}</span>
+                      <button className="rm" title="Supprimer cet agent" aria-label={`Supprimer ${a.nom}`} onClick={() => void onRemoveAgent(a)}>×</button>
+                    </div>
+                  </td>
                   {days.map((d) => {
                     const v = cellValue(doc, a.id, d);
                     const isSel = sel?.agent.id === a.id && sel.day === d;
@@ -138,6 +151,15 @@ export function HsPage({ year, setYear, agents, notify, refreshKey, onGoSettings
                   <td className="tot"><span className={`ball ${stats.byAgent[a.id] ? '' : 'zero'}`}>{stats.byAgent[a.id]}</span></td>
                 </tr>
               ))}
+            </tbody>
+            <tbody>
+              <tr>
+                <td className="name">
+                  <input className="addagent" type="text" placeholder="+ Ajouter un agent (Entrée)" value={newAgent} onChange={(e) => setNewAgent(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && newAgent.trim()) { void onAddAgent(newAgent.trim()); setNewAgent(''); } }} />
+                </td>
+                <td colSpan={n + 1} />
+              </tr>
             </tbody>
             <tfoot>
               <tr>

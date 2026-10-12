@@ -1,4 +1,4 @@
-import type { Agent, AgentsDoc, AppConfig, ChangeEvent, HsMonthDoc, ImportReport, Code } from './types';
+import type { Agent, AgentsDoc, AppConfig, ChangeEvent, HsMonthDoc, ImportReport, Code, PrestationsDoc } from './types';
 
 export interface AgentInput {
   id: string;
@@ -6,6 +6,16 @@ export interface AgentInput {
   ordre: number;
   actif: boolean;
   matricule?: string;
+  supprime?: boolean;
+}
+
+export interface PrestationInput {
+  code: string;
+  label: string;
+  color: string;
+  ordre: number;
+  actif: boolean;
+  supprime?: boolean;
 }
 
 /** API exposée au renderer via le preload (window.api). */
@@ -25,6 +35,10 @@ export interface Api {
   agents: {
     load(): Promise<AgentsDoc>;
     save(list: AgentInput[]): Promise<AgentsDoc>;
+  };
+  prestations: {
+    load(): Promise<PrestationsDoc>;
+    save(list: PrestationInput[]): Promise<PrestationsDoc>;
   };
   excel: {
     exportHs(year: number): Promise<string | null>;

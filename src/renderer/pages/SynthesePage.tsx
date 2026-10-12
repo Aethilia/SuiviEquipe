@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { MONTHS_SHORT } from '../../shared/calendar';
 import { monthStats, visibleAgents } from '../../shared/stats';
-import { CODES, type Agent, type HsMonthDoc } from '../../shared/types';
+import type { Agent, HsMonthDoc } from '../../shared/types';
+import { usePrestations } from '../prestations';
 import { CodeBadge } from '../components/CodeBadge';
 import { YearPicker } from '../components/YearPicker';
 import { daysInMonth } from '../../shared/calendar';
@@ -17,6 +18,7 @@ interface Props {
 
 export function SynthesePage({ year, setYear, agents, notify, refreshKey }: Props) {
   const [docs, setDocs] = useState<HsMonthDoc[]>([]);
+  const { all: prestations } = usePrestations();
 
   useEffect(() => {
     let alive = true;
@@ -33,7 +35,8 @@ export function SynthesePage({ year, setYear, agents, notify, refreshKey }: Prop
   const ids = rows.map((a) => a.id);
   const perMonth = useMemo(() => docs.map((d, i) => monthStats(d, ids, daysInMonth(year, i + 1))), [docs, ids.join(','), year]); // eslint-disable-line react-hooks/exhaustive-deps
   const yearTotal = perMonth.reduce((s, m) => s + m.total, 0);
-  const byCode = CODES.map((c) => perMonth.reduce((s, m) => s + m.byCode[c], 0));
+  const codes = [...prestations.map((p) => p.code), ...new Set(perMonth.flatMap((m) => Object.keys(m.byCode)).filter((c) => !prestations.some((p) => p.code === c)))];
+  const byCode = codes.map((c) => perMonth.reduce((s, m) => s + (m.byCode[c] ?? 0), 0));
 
   return (
     <div className="page">
@@ -43,7 +46,7 @@ export function SynthesePage({ year, setYear, agents, notify, refreshKey }: Prop
       </div>
       <div className="kpis">
         <div className="card kpi"><div className="label">Total HS {year}</div><div className="value">{yearTotal}</div></div>
-        {CODES.map((c, i) => (
+        {codes.map((c, i) => (
           <div className="card kpi" key={c}><div className="label"><CodeBadge code={c} /></div><div className="value">{byCode[i]}</div></div>
         ))}
       </div>

@@ -45,4 +45,22 @@ describe('stockage partagé', () => {
     const doc = await storage.saveAgents([{ id: 'u1', nom: 'Dupont Jean', ordre: 1, actif: false }]);
     expect(doc.agents.u1).toMatchObject({ nom: 'Dupont Jean', actif: false });
   });
+
+  it('prestations : ajout libre, modification, suppression ; couleur invalide refusée', async () => {
+    const first = await storage.savePrestations([{ code: ' nu ', label: 'Nettoyage urgent', color: '#112233', ordre: 9, actif: true }]);
+    expect(Object.keys(first.prestations).sort()).toEqual(['ES', 'EX', 'NU', 'OM', 'VN']); // les valeurs par défaut sont conservées
+    let doc = await storage.savePrestations([{ code: 'NU', label: 'Nettoyage urgent 2', color: '#112233', ordre: 9, actif: true }]);
+    expect(doc.prestations.NU.label).toBe('Nettoyage urgent 2');
+    doc = await storage.savePrestations([{ code: 'NU', label: 'x', color: '#112233', ordre: 9, actif: true, supprime: true }]);
+    expect(doc.prestations.NU.supprime).toBe(true);
+    await expect(storage.savePrestations([{ code: 'ZZ', label: 'z', color: 'rouge', ordre: 1, actif: true }])).rejects.toThrow(/Couleur/);
+  });
+
+  it('agent supprimé : marqué supprimé, et masqué des listes visibles', async () => {
+    const { visibleAgents } = await import('../src/shared/stats');
+    await storage.saveAgents([{ id: 'u2', nom: 'Martin Paul', ordre: 2, actif: true }]);
+    const doc = await storage.saveAgents([{ id: 'u2', nom: 'Martin Paul', ordre: 2, actif: true, supprime: true }]);
+    expect(doc.agents.u2.supprime).toBe(true);
+    expect(visibleAgents(Object.values(doc.agents), []).map((a) => a.id)).not.toContain('u2');
+  });
 });

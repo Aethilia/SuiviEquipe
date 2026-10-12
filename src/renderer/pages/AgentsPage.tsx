@@ -8,7 +8,7 @@ interface Props {
   reload: () => Promise<void>;
 }
 
-type Row = { id: string; nom: string; ordre: number; actif: boolean; matricule?: string };
+type Row = { id: string; nom: string; ordre: number; actif: boolean; matricule?: string; supprime?: boolean };
 
 const sorted = (a: Row[]) => [...a].sort((x, y) => x.ordre - y.ordre || x.nom.localeCompare(y.nom, 'fr'));
 
@@ -17,7 +17,7 @@ export function AgentsPage({ agents, notify, reload }: Props) {
   const [newName, setNewName] = useState('');
   const [showInactive, setShowInactive] = useState(true);
 
-  useEffect(() => setRows(sorted(agents)), [agents]);
+  useEffect(() => setRows(sorted(agents.filter((a) => !a.supprime))), [agents]);
 
   const save = async (list: Row[]) => {
     try {
@@ -54,6 +54,11 @@ export function AgentsPage({ agents, notify, reload }: Props) {
     void save(renum.filter((r, k) => sorted(rows)[k]?.id !== r.id || rows.find((x) => x.id === r.id)?.ordre !== r.ordre));
   };
 
+  const remove = (r: Row) => {
+    if (!window.confirm(`Supprimer « ${r.nom} » ?\n\nIl disparaîtra de toutes les grilles et des exports. Pour le garder dans l'historique, décochez plutôt « Actif ».`)) return;
+    void save([{ ...r, supprime: true }]);
+  };
+
   const shown = rows.filter((r) => showInactive || r.actif);
 
   return (
@@ -70,7 +75,7 @@ export function AgentsPage({ agents, notify, reload }: Props) {
       </div>
       <div className="card" style={{ overflow: 'auto' }}>
         <table className="list">
-          <thead><tr><th style={{ width: 80 }}>Ordre</th><th>Nom</th><th style={{ width: 130 }}>Matricule</th><th style={{ width: 110 }}>Actif</th></tr></thead>
+          <thead><tr><th style={{ width: 80 }}>Ordre</th><th>Nom</th><th style={{ width: 130 }}>Matricule</th><th style={{ width: 80 }}>Actif</th><th style={{ width: 110 }} /></tr></thead>
           <tbody>
             {shown.map((r) => (
               <tr key={r.id} style={r.actif ? undefined : { opacity: .6 }}>
@@ -81,13 +86,14 @@ export function AgentsPage({ agents, notify, reload }: Props) {
                 <td><input type="text" value={r.nom} onChange={(e) => patch(r.id, { nom: e.target.value })} onBlur={() => commit(r.id)} onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} /></td>
                 <td className="muted">{r.matricule ?? ''}</td>
                 <td><input type="checkbox" checked={r.actif} onChange={(e) => { patch(r.id, { actif: e.target.checked }); void save([{ ...r, actif: e.target.checked }]); }} /></td>
+                <td><button className="btn danger" style={{ padding: '4px 10px' }} onClick={() => remove(r)}>Supprimer</button></td>
               </tr>
             ))}
           </tbody>
         </table>
         {rows.length === 0 && <div className="empty">Aucun agent.</div>}
       </div>
-      <p className="muted" style={{ margin: 0 }}>Un agent désactivé disparaît des nouvelles grilles mais ses saisies passées sont conservées.</p>
+      <p className="muted" style={{ margin: 0 }}>« Actif » décoché : l'agent disparaît des mois où il n'a aucune saisie, l'historique est conservé. « Supprimer » : l'agent disparaît partout.</p>
     </div>
   );
 }

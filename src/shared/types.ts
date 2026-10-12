@@ -1,13 +1,31 @@
-/** Codes de prestation des heures sup (dimanches et fériés). */
-export const CODES = ['VN', 'OM', 'ES', 'EX'] as const;
-export type Code = (typeof CODES)[number];
+/** Code d'une prestation (« VN », « OM »…). La liste est libre : voir `Prestation`. */
+export type Code = string;
 
-export const CODE_LABELS: Record<Code, string> = {
-  VN: 'Vieux Nice',
-  OM: 'Ordures ménagères',
-  ES: 'Encombrants soir',
-  EX: 'Presta ex.',
-};
+/** Prestation (type d'heure sup). Le `code` est la clé stockée dans les cases ; il ne change plus après création. */
+export interface Prestation {
+  code: Code;
+  label: string;
+  /** Couleur de la pastille, `#RRGGBB`. */
+  color: string;
+  ordre: number;
+  actif: boolean;
+  supprime?: boolean;
+  t: number;
+}
+
+/** Fichier referentiel/prestations.json */
+export interface PrestationsDoc {
+  version: 1;
+  prestations: Record<string, Prestation>;
+}
+
+/** Prestations proposées au premier lancement ; ensuite tout est modifiable. */
+export const DEFAULT_PRESTATIONS: Omit<Prestation, 't'>[] = [
+  { code: 'VN', label: 'Vieux Nice', color: '#2E9E5B', ordre: 1, actif: true },
+  { code: 'OM', label: 'Ordures ménagères', color: '#2F80ED', ordre: 2, actif: true },
+  { code: 'ES', label: 'Encombrants soir', color: '#B8661A', ordre: 3, actif: true },
+  { code: 'EX', label: 'Presta ex.', color: '#8E5BD6', ordre: 4, actif: true },
+];
 
 /** Une case de la grille. `v = null` = case effacée (on garde l'horodatage pour la fusion). */
 export interface CellEntry {
@@ -34,6 +52,8 @@ export interface Agent {
   ordre: number;
   actif: boolean;
   matricule?: string;
+  /** Agent supprimé : masqué partout (les anciennes saisies restent dans les fichiers). */
+  supprime?: boolean;
   t: number;
 }
 
@@ -49,7 +69,7 @@ export interface AppConfig {
   userName: string;
 }
 
-export type ChangeEvent = { kind: 'hs'; month: string } | { kind: 'agents' };
+export type ChangeEvent = { kind: 'hs'; month: string } | { kind: 'agents' } | { kind: 'prestations' };
 
 export interface ImportReport {
   agentsCrees: number;

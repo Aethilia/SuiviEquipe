@@ -1,8 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { CODE_LABELS, CODES, type Code } from '../../shared/types';
+import type { Code } from '../../shared/types';
+import { usePrestations } from '../prestations';
 import { CodeBadge } from './CodeBadge';
-
-const KEYS: Record<string, Code> = { v: 'VN', o: 'OM', e: 'ES', x: 'EX' };
 
 interface Props {
   anchor: DOMRect;
@@ -12,8 +11,11 @@ interface Props {
   onClose: () => void;
 }
 
-/** Petit menu de choix de prestation, ancré à la case cliquée. Raccourcis : V / O / E / X, Suppr. */
+/** Menu de choix de prestation, ancré à la case cliquée. Raccourcis : 1 à 9 (dans l'ordre de la liste), Suppr. */
 export function CodePicker({ anchor, title, current, onPick, onClose }: Props) {
+  const { active, byCode } = usePrestations();
+  // La valeur actuelle reste visible même si la prestation a été désactivée.
+  const choices = current && !active.some((p) => p.code === current) ? [...active, ...(byCode.has(current) ? [byCode.get(current)!] : [])] : active;
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ left: anchor.left, top: anchor.bottom + 4 });
 
@@ -28,8 +30,8 @@ export function CodePicker({ anchor, title, current, onPick, onClose }: Props) {
     const key = (e: KeyboardEvent) => {
       if (e.key === 'Escape') return onClose();
       if (e.key === 'Delete' || e.key === 'Backspace') return onPick(null);
-      const c = KEYS[e.key.toLowerCase()];
-      if (c) onPick(c);
+      const idx = Number(e.key) - 1;
+      if (Number.isInteger(idx) && idx >= 0 && choices[idx]) onPick(choices[idx].code);
     };
     const down = (e: MouseEvent) => {
       if (!ref.current?.contains(e.target as Node)) onClose();
@@ -40,17 +42,18 @@ export function CodePicker({ anchor, title, current, onPick, onClose }: Props) {
       window.removeEventListener('keydown', key);
       window.removeEventListener('mousedown', down);
     };
-  }, [onPick, onClose]);
+  }, [onPick, onClose, choices]);
 
   return (
     <div className="picker" ref={ref} style={pos} role="menu">
       <div className="head">{title}</div>
-      {CODES.map((c) => (
-        <button key={c} onClick={() => onPick(c)} role="menuitem" autoFocus={current === c}>
-          <CodeBadge code={c} /> {CODE_LABELS[c]} {current === c && '✓'}
-          <kbd>{[...Object.entries(KEYS)].find(([, v]) => v === c)![0].toUpperCase()}</kbd>
+      {choices.map((p, i) => (
+        <button key={p.code} onClick={() => onPick(p.code)} role="menuitem" autoFocus={current === p.code}>
+          <CodeBadge code={p.code} /> {p.label} {current === p.code && '✓'}
+          {i < 9 && <kbd>{i + 1}</kbd>}
         </button>
       ))}
+      {current && !byCode.has(current) && <div className="head">Valeur actuelle : {current} (supprimée du référentiel)</div>}
       <button onClick={() => onPick(null)} role="menuitem" disabled={!current}>
         <span className="code" style={{ background: '#a9bbb8' }}>–</span> Effacer <kbd>Suppr</kbd>
       </button>

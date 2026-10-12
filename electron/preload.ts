@@ -19,6 +19,10 @@ const api: Api = {
     load: () => call('agents:load'),
     save: (list) => call('agents:save', list),
   },
+  prestations: {
+    load: () => call('prestations:load'),
+    save: (list) => call('prestations:save', list),
+  },
   excel: {
     exportHs: (year) => call('excel:exportHs', year),
     importHs: (year) => call('excel:importHs', year),

@@ -1,5 +1,5 @@
 import { cellKey } from './merge';
-import { CODES, type Agent, type Code, type HsMonthDoc } from './types';
+import type { Agent, Code, HsMonthDoc } from './types';
 
 export function cellValue(doc: HsMonthDoc, agentId: string, day: number): Code | null {
   return doc.cells[cellKey(agentId, day)]?.v ?? null;
@@ -10,7 +10,7 @@ export function visibleAgents(agents: Agent[], docs: HsMonthDoc[]): Agent[] {
   const used = new Set<string>();
   for (const d of docs) for (const [k, e] of Object.entries(d.cells)) if (e.v) used.add(k.split('|')[0]);
   return agents
-    .filter((a) => a.actif || used.has(a.id))
+    .filter((a) => !a.supprime && (a.actif || used.has(a.id)))
     .sort((x, y) => x.ordre - y.ordre || x.nom.localeCompare(y.nom, 'fr'));
 }
 
@@ -19,6 +19,7 @@ export interface MonthStats {
   byAgent: Record<string, number>;
   /** Index 0 = jour 1. */
   byDay: number[];
+  /** Nombre de saisies par code (tous les codes rencontrés). */
   byCode: Record<Code, number>;
   mobilises: number;
 }
@@ -29,7 +30,7 @@ export function monthStats(doc: HsMonthDoc, agentIds: string[], nbDays: number):
     total: 0,
     byAgent: Object.fromEntries(agentIds.map((id) => [id, 0])),
     byDay: Array.from({ length: nbDays }, () => 0),
-    byCode: Object.fromEntries(CODES.map((c) => [c, 0])) as Record<Code, number>,
+    byCode: {},
     mobilises: 0,
   };
   for (const [k, e] of Object.entries(doc.cells)) {
@@ -40,7 +41,7 @@ export function monthStats(doc: HsMonthDoc, agentIds: string[], nbDays: number):
     s.total++;
     s.byAgent[id]++;
     s.byDay[day - 1]++;
-    s.byCode[e.v]++;
+    s.byCode[e.v] = (s.byCode[e.v] ?? 0) + 1;
   }
   s.mobilises = Object.values(s.byAgent).filter((n) => n > 0).length;
   return s;

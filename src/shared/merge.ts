@@ -1,4 +1,4 @@
-import type { Agent, AgentsDoc, CellEntry, Code, HsMonthDoc } from './types';
+import type { Agent, AgentsDoc, CellEntry, Code, HsMonthDoc, Prestation, PrestationsDoc } from './types';
 
 type Stamped = { t: number; by?: string };
 
@@ -26,6 +26,19 @@ export function mergeMonth(a: HsMonthDoc, b: HsMonthDoc): HsMonthDoc {
     if (!cur || wins(entry, cur)) cells[k] = entry;
   }
   return { ...a, cells };
+}
+
+export function emptyPrestations(): PrestationsDoc {
+  return { version: 1, prestations: {} };
+}
+
+export function mergePrestations(a: PrestationsDoc, b: PrestationsDoc): PrestationsDoc {
+  const prestations: Record<string, Prestation> = { ...a.prestations };
+  for (const [k, p] of Object.entries(b.prestations)) {
+    const cur = prestations[k];
+    if (!cur || p.t > cur.t || (p.t === cur.t && p.label > cur.label)) prestations[k] = p;
+  }
+  return { ...a, prestations };
 }
 
 export function mergeAgents(a: AgentsDoc, b: AgentsDoc): AgentsDoc {

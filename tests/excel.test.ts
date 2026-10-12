@@ -10,7 +10,7 @@ const REAL = process.env.HS_XLSX ?? '';
 
 describe.skipIf(!REAL || !fs.existsSync(REAL))('import du vrai classeur', () => {
   it('lit les 12 mois, minuscules comprises', async () => {
-    const p = parseHsWorkbook(await loadWorkbook(REAL), 2026);
+    const p = parseHsWorkbook(await loadWorkbook(REAL), 2026, ['VN', 'OM', 'ES', 'EX']);
     console.log(Object.entries(p.months).map(([m, e]) => `${m}:${e.length}`).join(' '), '| agents', p.agents.length, '\n', p.warnings);
     expect(Object.keys(p.months)).toHaveLength(12);
     expect(p.months[1].length).toBe(59); // janvier : somme des "Total des jours" de la feuille
@@ -23,7 +23,7 @@ describe('export', () => {
     const agents = [{ id: 'a', nom: 'Dupont Jean', ordre: 1, actif: true, t: 0 }];
     const docs = Array.from({ length: 12 }, (_, i) => emptyMonth(monthKey(2026, i + 1)));
     docs[0] = applyCell(docs[0], 'a', 4, 'VN', 1, 'x');
-    const wb = buildHsWorkbook(2026, docs, agents);
+    const wb = buildHsWorkbook(2026, docs, agents, [{ code: 'VN', label: 'Vieux Nice', color: '#2E9E5B', ordre: 1, actif: true, t: 0 }]);
     expect(wb.worksheets).toHaveLength(13);
     const ws = wb.getWorksheet('Janvier')!;
     expect(ws.getCell('E5').value).toBe('VN');

@@ -62,6 +62,9 @@ function registerIpc() {
   ipcMain.handle('agents:load', () => storage.loadAgents());
   ipcMain.handle('agents:save', (_e, list) => storage.saveAgents(list));
 
+  ipcMain.handle('prestations:load', () => storage.loadPrestations());
+  ipcMain.handle('prestations:save', (_e, list) => storage.savePrestations(list));
+
   ipcMain.handle('excel:exportHs', async (_e, year: number) => {
     const r = await dialog.showSaveDialog(win!, {
       title: 'Exporter les heures sup',

@@ -37,7 +37,7 @@ async function scan(): Promise<ChangeEvent[]> {
         const sig = sigOf(await fs.promises.stat(f));
         if (sigs.get(f) !== sig) {
           sigs.set(f, sig);
-          if (primed) events.push(sub === 'hs' ? { kind: 'hs', month: n.replace(/\.json$/, '') } : { kind: 'agents' });
+          if (primed) events.push(sub === 'hs' ? { kind: 'hs', month: n.replace(/\.json$/, '') } : n === 'prestations.json' ? { kind: 'prestations' } : { kind: 'agents' });
         }
       } catch {
         /* fichier en cours de remplacement : on réessaie au prochain passage */

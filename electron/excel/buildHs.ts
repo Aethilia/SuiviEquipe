@@ -2,7 +2,8 @@ import ExcelJS from 'exceljs';
 import { dateStr, daysInMonth, MONTHS_FR, WEEKDAY_LETTER, weekday } from '../../src/shared/calendar';
 import { holidayMap } from '../../src/shared/holidays';
 import { cellValue, monthStats, visibleAgents } from '../../src/shared/stats';
-import { CODE_LABELS, CODES, type Agent, type HsMonthDoc } from '../../src/shared/types';
+import { FALLBACK_COLOR, textColorOn } from '../../src/shared/prestations';
+import type { Agent, HsMonthDoc, Prestation } from '../../src/shared/types';
 
 const COLORS = {
   accent: 'FF0F766E',
@@ -14,7 +15,6 @@ const COLORS = {
   holidayHead: 'FFB03A2E',
   head: 'FFDDF1EE',
   border: 'FFDCE7E4',
-  code: { VN: 'FF2E9E5B', OM: 'FF2F80ED', ES: 'FFB8661A', EX: 'FF8E5BD6' },
 };
 
 const fill = (argb: string): ExcelJS.Fill => ({ type: 'pattern', pattern: 'solid', fgColor: { argb } });
@@ -22,7 +22,10 @@ const thin = { style: 'thin' as const, color: { argb: COLORS.border } };
 const box: Partial<ExcelJS.Borders> = { top: thin, left: thin, bottom: thin, right: thin };
 const center: Partial<ExcelJS.Alignment> = { horizontal: 'center', vertical: 'middle' };
 
-export function buildHsWorkbook(year: number, docs: HsMonthDoc[], allAgents: Agent[]): ExcelJS.Workbook {
+const argb = (hex: string) => 'FF' + hex.replace('#', '').toUpperCase();
+
+export function buildHsWorkbook(year: number, docs: HsMonthDoc[], allAgents: Agent[], prestations: Prestation[]): ExcelJS.Workbook {
+  const byCode = new Map(prestations.map((p) => [p.code, p]));
   const wb = new ExcelJS.Workbook();
   wb.creator = 'Suivi Équipe';
   wb.created = new Date();
@@ -42,7 +45,7 @@ export function buildHsWorkbook(year: number, docs: HsMonthDoc[], allAgents: Age
 
     ws.getCell('A1').value = `Dimanches et fériés – ${MONTHS_FR[i]} ${year}`;
     ws.getCell('A1').font = { name: 'DM Sans', size: 16, bold: true, color: { argb: COLORS.dark } };
-    ws.getCell('A2').value = CODES.map((c) => `${c} = ${CODE_LABELS[c]}`).join('   ·   ');
+    ws.getCell('A2').value = prestations.map((p) => `${p.code} = ${p.label}`).join('   ·   ');
     ws.getCell('A2').font = { size: 9, italic: true, color: { argb: 'FF5F7471' } };
 
     // En-têtes (ligne 3 : jour de semaine, ligne 4 : numéro)
@@ -91,8 +94,9 @@ export function buildHsWorkbook(year: number, docs: HsMonthDoc[], allAgents: Age
         if (code) {
           count++;
           c.value = code;
-          c.fill = fill(COLORS.code[code]);
-          c.font = { bold: true, size: 9, color: { argb: 'FFFFFFFF' } };
+          const bg = byCode.get(code)?.color ?? FALLBACK_COLOR;
+          c.fill = fill(argb(bg));
+          c.font = { bold: true, size: 9, color: { argb: argb(textColorOn(bg)) } };
         } else if (dayKind[d - 1] !== 'normal') {
           c.fill = fill(dayKind[d - 1] === 'holiday' ? COLORS.holiday : COLORS.sunday);
         }

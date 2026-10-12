@@ -4,16 +4,18 @@ import { cellKey, emptyMonth } from '../../src/shared/merge';
 import { findMatch, nameKey } from '../../src/shared/names';
 import type { HsMonthDoc, ImportReport } from '../../src/shared/types';
 import { getConfig } from '../config';
-import { loadAgents, saveAgents, updateMonth } from '../storage';
+import { listPrestations } from '../../src/shared/prestations';
+import { loadAgents, loadPrestations, saveAgents, updateMonth } from '../storage';
 import { loadWorkbook } from './load';
 import { parseHsWorkbook } from './parseHs';
 
 export async function importHs(year: number, file: string): Promise<ImportReport> {
-  const parsed = parseHsWorkbook(await loadWorkbook(file), year);
+  const codes = listPrestations(await loadPrestations()).map((p) => p.code);
+  const parsed = parseHsWorkbook(await loadWorkbook(file), year, codes);
   const report: ImportReport = { agentsCrees: 0, casesImportees: 0, casesIgnorees: 0, moisTrouves: [], avertissements: parsed.warnings };
 
   // 1. Agents : rapprochement avec l'existant, création des autres.
-  const existing = Object.values((await loadAgents()).agents);
+  const existing = Object.values((await loadAgents()).agents).filter((a) => !a.supprime);
   const idByKey = new Map<string, string>();
   const toSave: { id: string; nom: string; ordre: number; actif: boolean; matricule?: string }[] = [];
   let ordre = existing.reduce((mx, a) => Math.max(mx, a.ordre), 0);

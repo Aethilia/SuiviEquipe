@@ -1,7 +1,8 @@
 import type ExcelJS from 'exceljs';
 import { daysInMonth, MONTHS_FR } from '../../src/shared/calendar';
 import { nameKey, splitMatricule } from '../../src/shared/names';
-import { CODES, type Code } from '../../src/shared/types';
+import { normalizeCode } from '../../src/shared/prestations';
+import type { Code } from '../../src/shared/types';
 
 export interface ParsedHs {
   /** Noms dans l'ordre d'apparition (feuilles mensuelles puis feuille « Noms des employés »). */
@@ -32,7 +33,9 @@ const monthIndex = (sheetName: string): number => {
   return MONTHS_FR.findIndex((m) => k === nameKey(m)) + 1;
 };
 
-export function parseHsWorkbook(wb: ExcelJS.Workbook, year: number): ParsedHs {
+/** `knownCodes` : codes de prestation du référentiel ; toute autre valeur de case est signalée et ignorée. */
+export function parseHsWorkbook(wb: ExcelJS.Workbook, year: number, knownCodes: readonly string[]): ParsedHs {
+  const known = new Set(knownCodes.map(normalizeCode));
   const out: ParsedHs = { agents: [], months: {}, warnings: [] };
   const seen = new Set<string>();
   const addAgent = (raw: string) => {
@@ -82,8 +85,8 @@ export function parseHsWorkbook(wb: ExcelJS.Workbook, year: number): ParsedHs {
       for (const [col, day] of dayCol) {
         const raw = text(row.getCell(col).value);
         if (!raw) continue;
-        const code = raw.toUpperCase() as Code;
-        if (!(CODES as readonly string[]).includes(code)) {
+        const code: Code = normalizeCode(raw);
+        if (!known.has(code)) {
           unknown.set(raw, (unknown.get(raw) ?? 0) + 1);
         } else if (day <= nbDays) {
           entries.push({ nom: splitMatricule(nom).nom, day, code });
@@ -100,6 +103,6 @@ export function parseHsWorkbook(wb: ExcelJS.Workbook, year: number): ParsedHs {
       if (r > 2 && t && nameKey(t) !== nameKey(ws.name)) addAgent(t);
     });
   }
-  for (const [v, n] of unknown) out.warnings.push(`Valeur « ${v} » ignorée (${n} case${n > 1 ? 's' : ''}) : ce n'est pas un code VN/OM/ES/EX.`);
+  for (const [v, n] of unknown) out.warnings.push(`Valeur « ${v} » ignorée (${n} case${n > 1 ? 's' : ''}) : ce n'est pas une prestation connue (ajoutez-la dans l'onglet Prestations puis réimportez).`);
   return out;
 }
