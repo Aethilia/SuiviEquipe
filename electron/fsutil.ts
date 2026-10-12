@@ -43,6 +43,12 @@ export async function writeJsonAtomic(file: string, data: unknown): Promise<void
 
 const LOCK_STALE_MS = 15_000;
 
+/** Sous Windows, un fichier en cours de suppression ou ouvert par un autre processus répond EPERM/EACCES/EBUSY au lieu de EEXIST. */
+const RETRYABLE = new Set(['EEXIST', 'EPERM', 'EACCES', 'EBUSY']);
+
+/** Suppression du verrou avec nouvelles tentatives (antivirus, indexation… peuvent le tenir quelques ms). */
+const releaseLock = (lock: string) => fs.promises.rm(lock, { force: true, maxRetries: 10, retryDelay: 40 }).catch(() => {});
+
 /**
  * Verrou coopératif par fichier `.lock` (création exclusive), valable sur un partage réseau.
  * Le verrou est considéré périmé après 15 s (poste planté).
@@ -52,28 +58,36 @@ export async function withLock<T>(file: string, fn: () => Promise<T>): Promise<T
   await fs.promises.mkdir(path.dirname(file), { recursive: true });
   const deadline = Date.now() + 8000;
   for (;;) {
+    let err: NodeJS.ErrnoException | null = null;
     try {
       const h = await fs.promises.open(lock, 'wx');
       await h.close();
       break;
     } catch (e) {
-      if ((e as NodeJS.ErrnoException).code !== 'EEXIST') throw e;
-      try {
-        const st = await fs.promises.stat(lock);
-        if (Date.now() - st.mtimeMs > LOCK_STALE_MS) {
-          await fs.promises.rm(lock, { force: true });
-          continue;
-        }
-      } catch {
-        continue; // le verrou vient d'être libéré
-      }
-      if (Date.now() > deadline) throw new Error('Le fichier est en cours de modification par un autre poste, réessayez.');
-      await sleep(80 + Math.random() * 120);
+      err = e as NodeJS.ErrnoException;
+      if (!RETRYABLE.has(err.code ?? '')) throw err;
     }
+    // Le verrou est pris (ou en cours de suppression) : on attend, sauf s'il est périmé.
+    try {
+      const st = await fs.promises.stat(lock);
+      if (Date.now() - st.mtimeMs > LOCK_STALE_MS) {
+        await releaseLock(lock);
+        continue;
+      }
+    } catch {
+      // Le verrou vient d'être libéré : on réessaie aussitôt (après une courte pause pour ne pas tourner à vide).
+      if (Date.now() > deadline) throw err;
+      await sleep(5 + Math.random() * 20);
+      continue;
+    }
+    if (Date.now() > deadline) {
+      throw err.code === 'EEXIST' ? new Error('Le fichier est en cours de modification par un autre poste, réessayez.') : err;
+    }
+    await sleep(40 + Math.random() * 100);
   }
   try {
     return await fn();
   } finally {
-    await fs.promises.rm(lock, { force: true }).catch(() => {});
+    await releaseLock(lock);
   }
 }
