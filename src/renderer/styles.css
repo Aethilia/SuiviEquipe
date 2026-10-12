@@ -71,7 +71,7 @@ h2 { font-size: 16px; margin: 0 0 10px; }
 .legend span { display: inline-flex; gap: 6px; align-items: center; }
 .sw { width: 14px; height: 14px; border-radius: 4px; display: inline-block; }
 
-.gridwrap { overflow: auto; flex: 1; min-height: 420px; position: relative; }
+.gridwrap { overflow: auto; flex: 0 1 auto; max-height: max(300px, calc(100vh - 365px)); min-height: 160px; position: relative; }
 table.grid { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; }
 .grid th, .grid td { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); text-align: center; padding: 0; height: 32px; }
 .grid thead th { position: sticky; top: 0; z-index: 3; background: var(--pill-bg); color: var(--pill-fg); font-weight: 700; min-width: 34px; height: 44px; line-height: 1.15; }
@@ -180,5 +180,4 @@ table.list { border-collapse: collapse; width: 100%; }
 
 /* Les cartes de liste gardent leur hauteur (la page défile) ; seule la grille s'adapte à la fenêtre. */
 .page > * { flex-shrink: 0; }
-.page > .gridwrap { flex-shrink: 1; }
 .list td:first-child { white-space: nowrap; }
