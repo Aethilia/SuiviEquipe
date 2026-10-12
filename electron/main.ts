@@ -42,7 +42,12 @@ function createWindow() {
   const dev = process.env.VITE_DEV_SERVER_URL;
   if (dev) void win.loadURL(dev);
   else void win.loadFile(path.join(__dirname, '../dist/index.html'));
-  win.on('closed', () => (win = null));
+  win.on('closed', () => {
+    log('fenêtre fermée');
+    win = null;
+  });
+  win.on('unresponsive', () => log('fenêtre ne répond plus'));
+  win.webContents.on('did-finish-load', () => log('page chargée'));
 }
 
 function emit(channel: string, payload: unknown) {
@@ -125,7 +130,19 @@ function registerIpc() {
 
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
-  app.quit();
+  // Une autre copie tourne déjà (peut-être cachée, après un plantage) : elle va afficher sa fenêtre. On l'explique au lieu de se fermer en silence.
+  log('une autre instance est déjà en cours : cette copie se ferme');
+  app
+    .whenReady()
+    .then(() => {
+      dialog.showMessageBoxSync({
+        type: 'info',
+        title: 'Suivi Équipe',
+        message: 'Suivi Équipe est déjà en cours d\'exécution.',
+        detail: 'Si aucune fenêtre n\'apparaît, fermez le processus « SuiviEquipe » dans le Gestionnaire des tâches (Ctrl+Maj+Échap), puis relancez l\'application.',
+      });
+    })
+    .finally(() => app.quit());
 } else {
   app.on('second-instance', () => {
     // Une copie déjà lancée mais sans fenêtre (plantée en arrière-plan) ne doit pas empêcher d'ouvrir l'application.
@@ -143,7 +160,9 @@ if (!gotLock) {
     })
     .catch((e) => fatal('Démarrage impossible', e instanceof Error ? (e.stack ?? e.message) : String(e)));
   app.on('window-all-closed', () => {
+    log('toutes les fenêtres sont fermées : arrêt');
     stopWatcher();
     app.quit();
   });
+  app.on('will-quit', () => log('arrêt de l\'application'));
 }
