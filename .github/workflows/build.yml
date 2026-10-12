@@ -19,6 +19,8 @@ jobs:
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - run: npm test
+      # Chaque build a une version croissante (1.0.<n° d'exécution>) : c'est ce qui permet aux postes de détecter la mise à jour.
+      - run: npm pkg set version=1.0.${{ github.run_number }}
       - run: npm run dist
       - uses: actions/upload-artifact@v4
         with: { name: installeur-windows, path: release/*.exe }
@@ -29,7 +31,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSION=$(node -p "require('./package.json').version")
-          gh release create "v${VERSION}-build${{ github.run_number }}" release/*.exe \
+          gh release create "v${VERSION}" release/*.exe \
             --target "${{ github.sha }}" \
-            --title "Suivi Équipe ${VERSION} (build ${{ github.run_number }})" \
-            --notes "Installeur Windows. Télécharger le fichier .exe ci-dessous, puis le lancer (installation par utilisateur, sans droits administrateur). Voir docs/DEPLOIEMENT.md pour la mise en place multi-postes."
+            --title "Suivi Équipe ${VERSION}" \
+            --notes "Installeur Windows. Première installation : lancer le .exe. Mise à jour d'un parc déjà installé : déposer ce fichier dans Paramètres → Publier une mise à jour (voir docs/DEPLOIEMENT.md)."

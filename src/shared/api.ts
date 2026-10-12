@@ -54,6 +54,12 @@ export interface Api {
     load(): Promise<VehiculesDoc>;
     save(list: VehiculeInput[]): Promise<VehiculesDoc>;
   };
+  update: {
+    info(): Promise<{ current: string; available: string | null; dir: string; auto: boolean }>;
+    /** Choisit un installateur et le dépose dans le dossier partagé ; renvoie sa version (null si annulé). */
+    publish(): Promise<string | null>;
+    installNow(): Promise<void>;
+  };
   prestations: {
     load(): Promise<PrestationsDoc>;
     save(list: PrestationInput[]): Promise<PrestationsDoc>;

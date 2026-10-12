@@ -8,6 +8,7 @@ import { importHs } from './excel/importHs';
 import { exportPoids } from './excel/exportPoids';
 import { importPoids } from './excel/importPoids';
 import { fatal, installCrashHandlers, log } from './diagnostics';
+import { canAutoUpdate, findUpdate, launchInstaller, publishInstaller, recentlyAttempted, UPDATE_DIR } from './updater';
 
 // Pilote graphique : sur certains postes (bureau à distance, vieux pilotes) Electron n'ouvre aucune fenêtre avec l'accélération matérielle.
 app.disableHardwareAcceleration();
@@ -50,6 +51,39 @@ function createWindow() {
   win.webContents.on('did-finish-load', () => log('page chargée'));
 }
 
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+function showSplash(version: string): BrowserWindow {
+  const html = `<!doctype html><meta charset="utf-8"><body style="margin:0;font-family:'Segoe UI',sans-serif;background:#EEF4F2;color:#0B3B37;display:flex;flex-direction:column;justify-content:center;height:100vh;padding:0 32px;box-sizing:border-box;border:1px solid #DCE7E4">
+    <div style="font-size:19px;font-weight:700;margin-bottom:8px">Mise à jour vers la version ${version}</div>
+    <div style="font-size:13.5px;color:#5F7471;line-height:1.5">L'application va se fermer puis se rouvrir toute seule dans quelques instants.<br><b>Merci de ne pas la relancer.</b></div></body>`;
+  const w = new BrowserWindow({ width: 480, height: 190, frame: false, resizable: false, alwaysOnTop: true, center: true, backgroundColor: '#EEF4F2', webPreferences: { sandbox: true } });
+  void w.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
+  return w;
+}
+
+/** Au démarrage : si un installateur plus récent est dans le dossier partagé, on l'installe puis l'application se relance. Renvoie vrai si on quitte. */
+async function autoUpdateAtStartup(): Promise<boolean> {
+  if (!canAutoUpdate() || !getConfig().configured) return false;
+  try {
+    // Un partage injoignable ne doit pas retarder l'ouverture de l'application.
+    const u = await Promise.race([findUpdate(), sleep(7000).then(() => null)]);
+    if (!u) return false;
+    if (recentlyAttempted(u.version)) {
+      log(`mise à jour ${u.version} déjà tentée il y a peu sans succès : on ouvre la version actuelle`);
+      return false;
+    }
+    showSplash(u.version);
+    await launchInstaller(u);
+    await sleep(4000);
+    app.quit();
+    return true;
+  } catch (e) {
+    log(`mise à jour automatique impossible : ${e instanceof Error ? e.message : String(e)}`);
+    return false;
+  }
+}
+
 function emit(channel: string, payload: unknown) {
   win?.webContents.send(channel, payload);
 }
@@ -84,6 +118,27 @@ function registerIpc() {
   ipcMain.handle('poids:setCell', (_e, month, vehId, day, v) => storage.setPoidsCell(month, vehId, day, v));
   ipcMain.handle('vehicules:load', () => storage.loadVehicules());
   ipcMain.handle('vehicules:save', (_e, list) => storage.saveVehicules(list));
+
+  ipcMain.handle('update:info', async () => ({
+    current: app.getVersion(),
+    available: (await findUpdate())?.version ?? null,
+    dir: path.join(getConfig().dataDir, UPDATE_DIR),
+    auto: canAutoUpdate(),
+  }));
+  ipcMain.handle('update:publish', async () => {
+    const r = await dialog.showOpenDialog(win!, {
+      title: 'Choisir le nouvel installateur (SuiviEquipe-Setup-X.Y.Z.exe)',
+      properties: ['openFile'],
+      filters: [{ name: 'Installateur', extensions: ['exe'] }],
+    });
+    return r.canceled ? null : publishInstaller(r.filePaths[0]);
+  });
+  ipcMain.handle('update:installNow', async () => {
+    const u = await findUpdate();
+    if (!u) throw new Error('Aucune mise à jour disponible.');
+    await launchInstaller(u);
+    setTimeout(() => app.quit(), 1500);
+  });
 
   ipcMain.handle('prestations:load', () => storage.loadPrestations());
   ipcMain.handle('prestations:save', (_e, list) => storage.savePrestations(list));
@@ -152,8 +207,9 @@ if (!gotLock) {
   });
   void app
     .whenReady()
-    .then(() => {
+    .then(async () => {
       registerIpc();
+      if (await autoUpdateAtStartup()) return;
       createWindow();
       void startWatcher((ev) => emit('data:changed', ev));
       void storage.pruneBackups();

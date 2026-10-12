@@ -28,6 +28,11 @@ const api: Api = {
     load: () => call('vehicules:load'),
     save: (list) => call('vehicules:save', list),
   },
+  update: {
+    info: () => call('update:info'),
+    publish: () => call('update:publish'),
+    installNow: () => call('update:installNow'),
+  },
   prestations: {
     load: () => call('prestations:load'),
     save: (list) => call('prestations:save', list),

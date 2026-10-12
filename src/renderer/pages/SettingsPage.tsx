@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { AppConfig, ImportPoidsReport, ImportReport } from '../../shared/types';
 import { errMsg, type Notify } from '../hooks';
 
@@ -16,6 +16,9 @@ export function SettingsPage({ config, year, notify, onConfig, onImported }: Pro
   const [report, setReport] = useState<ImportReport | null>(null);
   const [reportP, setReportP] = useState<ImportPoidsReport | null>(null);
   const [busy, setBusy] = useState(false);
+  const [upd, setUpd] = useState<{ current: string; available: string | null; dir: string; auto: boolean } | null>(null);
+  const loadUpd = useCallback(() => window.api.update.info().then(setUpd, () => setUpd(null)), []);
+  useEffect(() => void loadUpd(), [loadUpd, config.dataDir]);
   const dirty = dataDir !== config.dataDir || userName !== config.userName;
 
   const browse = async () => {
@@ -58,6 +61,26 @@ export function SettingsPage({ config, year, notify, onConfig, onImported }: Pro
       notify(errMsg(e));
     } finally {
       setBusy(false);
+    }
+  };
+
+  const publish = async () => {
+    try {
+      const v = await window.api.update.publish();
+      if (v) {
+        notify(`Version ${v} publiée : chaque poste l'installera à sa prochaine ouverture.`, 'info');
+        void loadUpd();
+      }
+    } catch (e) {
+      notify(errMsg(e));
+    }
+  };
+  const installNow = async () => {
+    try {
+      await window.api.update.installNow();
+      notify("Installation en cours : l'application va se fermer puis se rouvrir.", 'info');
+    } catch (e) {
+      notify(errMsg(e));
     }
   };
 
@@ -112,6 +135,23 @@ export function SettingsPage({ config, year, notify, onConfig, onImported }: Pro
             {reportP.avertissements.length > 0 && <ul>{reportP.avertissements.map((w, i) => <li key={i}>{w}</li>)}</ul>}
           </div>
         )}
+      </div>
+
+      <div className="card form">
+        <h2>Mises à jour</h2>
+        <p style={{ margin: 0 }}>
+          Version installée : <b>{upd?.current ?? '…'}</b>
+          {upd?.available && <> · version <b>{upd.available}</b> disponible dans le dossier partagé</>}
+        </p>
+        {upd?.available && (
+          <div><button className="btn primary" onClick={installNow}>Installer la version {upd.available} maintenant</button></div>
+        )}
+        <p className="muted" style={{ margin: 0 }}>
+          Chaque poste installe tout seul la version la plus récente déposée dans le dossier partagé, <b>à l'ouverture de l'application</b>.
+          Pour diffuser une nouvelle version : téléchargez <i>SuiviEquipe-Setup-X.Y.Z.exe</i> depuis la page Releases du dépôt, puis déposez-le ici.
+          {upd && !upd.auto && ' (Mise à jour automatique inactive dans cette version de développement.)'}
+        </p>
+        <div><button className="btn" onClick={publish}>Publier une mise à jour…</button></div>
       </div>
     </div>
   );

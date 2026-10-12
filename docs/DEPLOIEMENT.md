@@ -15,6 +15,25 @@ Il n'y a **pas de serveur** : chaque poste installe l'application et tous pointe
 4. **Sur un seul poste**, importer les classeurs Excel existants : Paramètres → importer (une fois par classeur).
    Les autres postes voient les données dès leur premier lancement.
 
+## Mises à jour automatiques
+
+Le dossier partagé sert de « magasin » de mises à jour (sous-dossier `_mises-a-jour`). **Chaque poste installe tout seul la version la plus récente qui s'y trouve, à l'ouverture de l'application.**
+
+**Publier une nouvelle version (une seule personne, une seule fois) :**
+1. Dans GitHub : *Actions → Installeur Windows → Run workflow* (laisser « Publier » coché). Chaque exécution produit une version plus récente (`1.0.<n°>`).
+2. Télécharger `SuiviEquipe-Setup-X.Y.Z.exe` depuis la page *Releases* du dépôt.
+3. Dans l'application : *Paramètres → Mises à jour → Publier une mise à jour…* et choisir ce fichier.
+   (Équivalent : copier le fichier tel quel dans `_mises-a-jour`. Son nom doit rester `SuiviEquipe-Setup-X.Y.Z.exe`.)
+
+**Ce que voient les autres postes :** à leur prochaine ouverture, un écran « Mise à jour vers la version X » s'affiche, l'application se ferme et **se rouvre toute seule en quelques dizaines de secondes** (il ne faut pas la relancer). Un poste qui garde l'application ouverte toute la journée peut aussi utiliser *Paramètres → Installer la version X maintenant*.
+
+**À savoir :**
+* Le **premier déploiement** reste manuel : les postes déjà installés avant la mise à jour automatique n'ont pas cette fonction ; ils doivent installer une fois la nouvelle version à la main.
+* Un fichier en cours de copie est ignoré tant qu'il n'est pas complet. Si l'installation d'une version échoue, l'application s'ouvre normalement (version actuelle) et ne réessaie qu'après 30 minutes ; la cause est dans le journal.
+* Si le partage est injoignable au démarrage, la vérification est abandonnée après quelques secondes et l'application s'ouvre normalement.
+* Seuls les 2 installateurs les plus récents sont conservés dans le dossier.
+* Les installateurs ne sont pas signés : un antivirus ou Windows 11 (Contrôle intelligent des applications) peut bloquer l'installation silencieuse. Le cas échéant, installer à la main et consulter le journal.
+
 ## Ce que voit chaque poste
 
 * Les modifications d'un collègue apparaissent **toutes seules en 3 à 10 secondes** (le partage réseau met parfois quelques secondes à rendre un changement visible). Le bouton **↻** en haut à droite force une actualisation.
